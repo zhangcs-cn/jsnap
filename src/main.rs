@@ -75,8 +75,16 @@ fn main() -> std::io::Result<()> {
     }
 
     let mut channel = channel.unwrap();
-    let version = channel.read_str(18);
-    println!("version: {}", version.unwrap());
+    let version = channel.read_str(18)?;
+    println!("version: {}", version);
+
+    channel.skip(1);
+
+    let idSize = channel.read_u32()?;
+    println!("oop size: {}", idSize);
+
+    let timestamp = channel.read_u64()?;
+    println!("timestamp: {}", timestamp);
 
     Ok(())
 }
