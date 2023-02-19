@@ -1,4 +1,4 @@
-mod snap;
+mod io;
 
 use std::ffi::OsStr;
 use std::path::{MAIN_SEPARATOR, Path, PathBuf};
@@ -10,7 +10,7 @@ use std::io::{ErrorKind, Read};
 use clap::builder::Str;
 use dirs::data_dir;
 use indicatif::ProgressBar;
-use snap::channel::HprofChannel;
+use io::channel::HprofChannel;
 
 pub const APP_NAME: &str = "jsnap";
 pub const FILE_ARG_NAME: &str = "file";
@@ -78,10 +78,10 @@ fn main() -> std::io::Result<()> {
     let version = channel.read_str(18)?;
     println!("version: {}", version);
 
-    channel.skip(1);
+    channel.skip(1)?;
 
-    let idSize = channel.read_u32()?;
-    println!("oop size: {}", idSize);
+    let id_size = channel.read_u32()?;
+    println!("oop size: {}", id_size);
 
     let timestamp = channel.read_u64()?;
     println!("timestamp: {}", timestamp);
