@@ -5,14 +5,15 @@ use std::str::Utf8Error;
 use std::mem::transmute;
 use byteordered::byteorder::{ReadBytesExt, BigEndian};
 
-pub(crate) struct HprofChannel {
+pub(crate) struct Channel {
     file: File,
+    id_size: u8,
 }
 
-impl HprofChannel {
-    pub(crate) fn new(path: &Path) -> Result<HprofChannel, Error> {
+impl Channel {
+    pub(crate) fn new(path: &Path) -> Result<Channel, Error> {
         let mut file = File::open(path)?;
-        let channel = HprofChannel { file };
+        let channel = Channel { file, id_size: 8 };
         Ok(channel)
     }
 
@@ -23,33 +24,42 @@ impl HprofChannel {
     }
 
     pub(crate) fn read_u64(&mut self) -> Result<u64, Error> {
-        let mut buf = self.read(8)?;
+        let buf = self.read(8)?;
         let mut cursor = Cursor::new(buf);
-        let mut number: u64 = cursor.read_u64::<BigEndian>()?;
+        let number: u64 = cursor.read_u64::<BigEndian>()?;
         Ok(number)
     }
 
     pub(crate) fn read_u32(&mut self) -> Result<u32, Error> {
-        let mut buf = self.read(4)?;
+        let buf = self.read(4)?;
         let mut cursor = Cursor::new(buf);
-        let mut number: u32 = cursor.read_u32::<BigEndian>()?;
+        let number: u32 = cursor.read_u32::<BigEndian>()?;
         Ok(number)
     }
 
     pub(crate) fn read_u8(&mut self) -> Result<u8, Error> {
-        let mut buf = self.read(1)?;
+        let buf = self.read(1)?;
         let mut cursor = Cursor::new(buf);
-        let mut number: u8 = cursor.read_u8()?;
+        let number: u8 = cursor.read_u8()?;
         Ok(number)
     }
 
-    pub(crate) fn read_u2(&mut self) {}
-
-    pub(crate) fn skip(&mut self, len: i64) -> Result<u64, Error> {
-        self.file.seek(SeekFrom::Current(len))
+    pub(crate) fn read_u16(&mut self) -> Result<u16, Error> {
+        let buf = self.read(2)?;
+        let mut cursor = Cursor::new(buf);
+        let number: u16 = cursor.read_u16::<BigEndian>()?;
+        Ok(number)
     }
 
-    fn read(&mut self, len: usize) -> Result<Vec<u8>, Error> {
+    pub(crate) fn skip(&mut self, len: i64) {
+        let _ = self.file.seek(SeekFrom::Current(len));
+    }
+
+    pub(crate) fn reads(&mut self, buf: &mut [u8]) -> usize {
+        return self.file.read(buf).unwrap();
+    }
+
+    pub(crate) fn read(&mut self, len: usize) -> Result<Vec<u8>, Error> {
         let mut buf = vec![Default::default(); len];
         let count = self.file.read(&mut buf)?;
         if count <= 0 {
@@ -58,4 +68,19 @@ impl HprofChannel {
             Ok(buf)
         }
     }
+
+    pub(crate) fn read_id(&mut self) -> Result<u64, Error> {
+        let mut id: u64;
+        if self.id_size == 4 {
+            id = self.read_u32()? as u64;
+        } else {
+            id = self.read_u64()?;
+        }
+        Ok(id)
+    }
+
+    pub(crate) fn set_id_size(&mut self, id_size: u8) {
+        self.id_size = id_size
+    }
+
 }
