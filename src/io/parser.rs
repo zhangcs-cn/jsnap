@@ -1,13 +1,13 @@
+use super::bar::Bar;
+use super::channel::HprofChannel;
+use crate::io::channel::Channel;
+use clap::Error;
+use indicatif::ProgressBar;
 use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::path::Path;
 use std::process::id;
 use std::sync::{Arc, Mutex};
-use clap::Error;
-use indicatif::ProgressBar;
-use crate::io::channel::Channel;
-use super::channel::HprofChannel;
-use super::bar::Bar;
 
 static mut ID_SIZE: u32 = 8;
 
@@ -54,7 +54,7 @@ impl Snapshot {
         let class_name = self.constant_pool.get(&symbol_id);
         match class_name {
             None => "unknown",
-            Some(class_name) => class_name
+            Some(class_name) => class_name,
         }
     }
     pub fn set_class_name(&mut self, class_id: u32, class_name: String) {
@@ -64,7 +64,7 @@ impl Snapshot {
         let class_name = self.class_2_name.get(&class_id);
         match class_name {
             None => "unknown",
-            Some(class_name) => class_name
+            Some(class_name) => class_name,
         }
     }
     pub fn set_class_ser_num_2_id(&mut self, serial_num: u32, class_id: u32) {
@@ -74,7 +74,7 @@ impl Snapshot {
         let class_id = self.class_ser_num_2_id.get(&serial_num);
         match class_id {
             None => 0,
-            Some(class_id) => *class_id
+            Some(class_id) => *class_id,
         }
     }
     pub fn get_id(&mut self, channel: &mut dyn Channel) -> Result<u64, Error> {
@@ -131,6 +131,7 @@ pub fn parse(file: &Path) -> Result<Snapshot, Error> {
     let mut snap: Snapshot = Snapshot::new();
 
     let mut constant_pool: HashMap<u64, String> = HashMap::new();
+    // class id name
     let mut class_2_name: HashMap<u32, String> = HashMap::new();
     let mut class_ser_num_2_id: HashMap<u32, u32> = HashMap::new();
 
@@ -158,7 +159,7 @@ pub fn parse(file: &Path) -> Result<Snapshot, Error> {
                 let class_name = constant_pool.get(&name_id);
                 let class_name = match class_name {
                     Some(name) => name,
-                    None => ""
+                    None => "",
                 };
                 let class_name = class_name.replace("/", ".");
                 println!("{}", class_name);
@@ -171,7 +172,9 @@ pub fn parse(file: &Path) -> Result<Snapshot, Error> {
                 let class_id = class_ser_num_2_id.get(&class_ser_num.unwrap());
                 class_2_name.remove(class_id.unwrap());
             }
-            HPROF_FRAME => read_frame(&mut channel, &bar),
+            HPROF_FRAME => {
+                read_frame(&mut channel, &bar);
+            }
             HPROF_TRACE => {
                 // 堆栈
                 read_hprof_trace(&mut channel, &bar);
@@ -182,7 +185,7 @@ pub fn parse(file: &Path) -> Result<Snapshot, Error> {
             }
             HPROF_END_THREAD => {
                 // 已结束线程
-                let threadSerialNum = channel.read_u32();
+                let thread_serial_num = channel.read_u32();
                 bar.inc(4);
             }
             HPROF_HEAP_SUMMARY => {
@@ -195,7 +198,8 @@ pub fn parse(file: &Path) -> Result<Snapshot, Error> {
                 // 0x00000002: cpu sampling on/off
                 let settings = channel.read_u32();
                 // stack trace depth
-                let maxTraceDepth = channel.read_u16();
+                let max_trace_depth = channel.read_u16();
+                bar.inc(4 + 2);
             }
             HPROF_ALLOC_SITES => {
                 // a set of heap allocation sites, obtained after GC
@@ -206,24 +210,25 @@ pub fn parse(file: &Path) -> Result<Snapshot, Error> {
                 // cutoff ratio
                 let cutoff = channel.read_u32();
                 // total live bytes
-                let nblive = channel.read_u32();
+                let nb_live = channel.read_u32();
                 // total live instances
-                let nilive = channel.read_u32();
+                let ni_live = channel.read_u32();
                 // total bytes allocated
-                let tbytes = channel.read_u64();
+                let t_bytes = channel.read_u64();
                 // total instances allocated
-                let tinsts = channel.read_u64();
+                let t_insts = channel.read_u64();
                 // number of sites that follow
                 let num_elements = channel.read_u32().unwrap();
                 for i in 0..num_elements {
                     let ty = channel.read_u8();
-                    let classSerialNum = channel.read_u32();
-                    let traceSerialNum = channel.read_u32();
-                    let nblive = channel.read_u32();
-                    let nilive = channel.read_u32();
-                    let tbytes2 = channel.read_u32();
-                    let tinsts2 = channel.read_u32();
+                    let class_serial_num = channel.read_u32();
+                    let trace_serial_num = channel.read_u32();
+                    let nb_live = channel.read_u32();
+                    let ni_live = channel.read_u32();
+                    let t_bytes2 = channel.read_u32();
+                    let t_insts2 = channel.read_u32();
                 }
+                bar.inc(2 + 4 + 4 + 4 + 8 + 8 + 4 + 1 + 4 + 4 + 4 + 4 + 4 + 4);
             }
             HPROF_CPU_SAMPLES => {
                 channel.skip(length as i64);
@@ -245,15 +250,18 @@ pub fn parse(file: &Path) -> Result<Snapshot, Error> {
     println!("version: {}", version);
     println!("oop size: {}", id_size);
     println!("timestamp: {}", timestamp);
+    println!("constant_pool: ");
+    // let keys = constant_pool.keys();
+    // for k in keys {
+    //     println!("{} -> {}", k, constant_pool.get(k).unwrap());
+    // }
 
     return Ok(snap);
 }
 
 fn read_utf8(channel: &mut HprofChannel, len: u32, bar: &ProgressBar) -> (u64, String) {
     // 常量池
-    let size = unsafe {
-        ID_SIZE
-    };
+    let size = unsafe { ID_SIZE };
     let mut length = len - size;
     let symbol_id = read_id(channel);
     let name = channel.read_str(length as usize);
@@ -316,9 +324,7 @@ fn read_version(channel: &mut HprofChannel) -> String {
 }
 
 fn read_id(channel: &mut HprofChannel) -> u64 {
-    if unsafe {
-        ID_SIZE
-    } == 4 {
+    if unsafe { ID_SIZE } == 4 {
         return channel.read_u32().unwrap() as u64;
     }
     return channel.read_u64().unwrap();

@@ -9,9 +9,11 @@ impl Bar {
         let pd = ProgressBar::new(len);
         pd.set_style(
             ProgressStyle::default_bar()
-                .template("{spinner:.green} [{bar:40.cyan/blue}] {pos:>7} {len:7} [{elapsed_precise}]")
+                .template(
+                    "{spinner:.green} [{bar:40.cyan/blue}] {pos:>7} {len:7} [{elapsed_precise}]",
+                )
                 .unwrap()
-                .progress_chars("#>-")
+                .progress_chars("#>-"),
         );
         return pd;
     }

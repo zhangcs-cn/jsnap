@@ -1,7 +1,8 @@
+use byteordered::byteorder::{BigEndian, ReadBytesExt};
 use std::fs::File;
-use std::io::{Error, ErrorKind, Read, Cursor, SeekFrom, Seek};
+use std::io::{Cursor, Error, ErrorKind, Read, Seek, SeekFrom};
 use std::path::Path;
-use byteordered::byteorder::{ReadBytesExt, BigEndian};
+use std::str::Utf8Error;
 
 type Byte = u8;
 type Short = u16;
@@ -38,7 +39,7 @@ pub trait Channel {
     }
     fn read_str(&mut self, len: usize) -> Result<String, Error> {
         let mut buf: Vec<u8> = self.read(len)?;
-        let result: &str = std::str::from_utf8(&buf).unwrap();
+        let result = String::from_utf8_lossy(&buf);
         Ok(result.to_string())
     }
     fn read_char(&mut self) -> Result<char, Error> {

@@ -1,17 +1,17 @@
 mod io;
 
-use std::ffi::OsStr;
-use std::path::{MAIN_SEPARATOR, Path, PathBuf};
+use clap::builder::Str;
 use clap::{Arg, ArgAction, Command, Error};
 use dirs;
+use dirs::data_dir;
+use indicatif::{ProgressBar, ProgressStyle};
+use io::parser;
+use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::fs;
 use std::fs::File;
 use std::io::{ErrorKind, Read};
-use clap::builder::Str;
-use dirs::data_dir;
-use indicatif::{ProgressBar, ProgressStyle};
-use std::collections::HashMap;
-use io::parser;
+use std::path::{Path, PathBuf, MAIN_SEPARATOR};
 
 pub const APP_NAME: &str = "jsnap";
 pub const FILE_ARG_NAME: &str = "file";
@@ -22,24 +22,28 @@ fn cli() -> Command {
         .about("Java Snapshot Analysis Tool")
         .author("zcs")
         .version("0.1.0")
-        .arg_required_else_help(true)
-        .arg(Arg::new(DATA_ARG_NAME)
-            .short('d')
-            .long("data")
-            .action(ArgAction::Set)
-            .help("data file directory")
+        // .arg_required_else_help(true)
+        .arg(
+            Arg::new(DATA_ARG_NAME)
+                .short('d')
+                .long("data")
+                .action(ArgAction::Set)
+                .help("data file directory"),
         )
-        .arg(Arg::new(FILE_ARG_NAME)
-            .required(true)
-            .help("a snapshots file")
-            .action(ArgAction::Set)
-            .num_args(1))
+        // .arg(
+        //     Arg::new(FILE_ARG_NAME)
+        //         .required(true)
+        //         .help("a snapshots file")
+        //         .action(ArgAction::Set)
+        //         .num_args(1),
+        // )
 }
 
 fn main() -> std::io::Result<()> {
     let matches = cli().get_matches();
 
-    let file = matches.get_one::<String>(FILE_ARG_NAME).unwrap();
+    // let file = matches.get_one::<String>(FILE_ARG_NAME).unwrap();
+   let file = "F:/20230103.hprof";
     println!("file -> {}", file);
 
     let file_path = Path::new(file);
@@ -55,9 +59,7 @@ fn main() -> std::io::Result<()> {
 
     let data_dir = matches.get_one::<String>(DATA_ARG_NAME);
     let data_dir_path: String = if data_dir.is_none() {
-        let dir = dirs::home_dir().unwrap_or_else(|| {
-            dirs::data_local_dir().unwrap()
-        });
+        let dir = dirs::home_dir().unwrap_or_else(|| dirs::data_local_dir().unwrap());
         format!("{}{}.jsnap", dir.display(), MAIN_SEPARATOR)
     } else {
         format!("{}", data_dir.unwrap())
@@ -68,7 +70,8 @@ fn main() -> std::io::Result<()> {
     work_path.push(data_dir_path);
     work_path.push(file_stem);
     println!("{}", work_path.display());
-    fs::create_dir_all(work_path.clone()).expect(format!("无法写数据{}", work_path.display()).as_str());
+    fs::create_dir_all(work_path.clone())
+        .expect(format!("无法写数据{}", work_path.display()).as_str());
 
     let mut snap = parser::parse(file_path);
     // match snap {
@@ -79,7 +82,6 @@ fn main() -> std::io::Result<()> {
     //     }
     //     Err(_) => {}
     // }
-
 
     // test(100);
 
@@ -92,7 +94,7 @@ fn test(len: u64) {
         ProgressStyle::default_bar()
             .template("{spinner:.green} [{bar:40.cyan/blue}] {pos:>7} {len:7} [{elapsed_precise}]")
             .unwrap()
-            .progress_chars("#>-")
+            .progress_chars("#>-"),
     );
 
     for _ in 0..100 {
@@ -100,5 +102,3 @@ fn test(len: u64) {
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
 }
-
-
