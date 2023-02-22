@@ -2,16 +2,16 @@ mod io;
 
 use std::ffi::OsStr;
 use std::path::{MAIN_SEPARATOR, Path, PathBuf};
-use clap::{Arg, ArgAction, Command};
+use clap::{Arg, ArgAction, Command, Error};
 use dirs;
 use std::fs;
 use std::fs::File;
 use std::io::{ErrorKind, Read};
 use clap::builder::Str;
 use dirs::data_dir;
-use io::channel::Channel;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::collections::HashMap;
+use io::parser;
 
 pub const APP_NAME: &str = "jsnap";
 pub const FILE_ARG_NAME: &str = "file";
@@ -70,86 +70,18 @@ fn main() -> std::io::Result<()> {
     println!("{}", work_path.display());
     fs::create_dir_all(work_path.clone()).expect(format!("无法写数据{}", work_path.display()).as_str());
 
-    let channel = Channel::new(file_path);
-    if channel.is_err() {
-        panic!("{}", channel.err().unwrap())
-    }
+    let mut snap = parser::parse(file_path);
+    // match snap {
+    //     Ok(mut snap) => {
+    //         println!("{}", snap.get_version());
+    //         println!("{}", snap.get_id_size());
+    //         println!("{}", snap.get_timestamp());
+    //     }
+    //     Err(_) => {}
+    // }
 
-    let mut channel = channel.unwrap();
-    let version = channel.read_str(18)?;
-    println!("version: {}", version);
 
-    channel.skip(1);
-
-    let id_size = channel.read_u32()?;
-    println!("oop size: {}", id_size);
-
-    let timestamp = channel.read_u64()?;
-    println!("timestamp: {}", timestamp);
-
-    let mut constant_pool = HashMap::new();
-    let mut class_2_name = HashMap::new();
-    let mut class_ser_num_2_id = HashMap::new();
-
-    loop {
-        // let tag: Vec<u8> = vec![Default::default(); 1];
-        let mut tag: [u8; 1] = [0; 1];
-        let count = channel.reads(&mut tag);
-        if count == 0 {
-            break;
-        }
-        let tag = tag.get(0).unwrap().clone();
-
-        let offset = channel.read_u32()?;
-        let length = channel.read_u32()?;
-        match tag {
-            HPROF_UTF8 => {
-                // 常量池
-                let mut length = length - id_size;
-                let symbol_id = channel.read_id()?;
-                let name = channel.read_str(length as usize)?;
-                constant_pool.insert(symbol_id, name);
-            }
-            HPROF_LOAD_CLASS => {
-                // 加载类
-                let serial_num = channel.read_u32()?;
-                let class_id = channel.read_u32()?;
-                channel.skip(4);
-                let name_id = channel.read_id()?;
-
-                let class_name = constant_pool.get(&name_id);
-                let class_name = match class_name {
-                    Some(name) => name,
-                    None => ""
-                };
-                let class_name = class_name.replace("/", ".");
-                println!("{}", class_name);
-                class_2_name.insert(class_id, class_name);
-                class_ser_num_2_id.insert(serial_num, class_id);
-            }
-            HPROF_UNLOAD_CLASS => {
-                let class_ser_num = channel.read_u32()?;
-                let class_id = class_ser_num_2_id.get(&class_ser_num);
-                if class_id.is_some() {
-                    class_2_name.remove(class_id.unwrap());
-                }
-            }
-            HPROF_FRAME => {
-                let frame_id = channel.read_id();
-                let method_name = channel.read_id();
-                let method_sig = channel.read_id();
-                let src_file = channel.read_id();
-                let class_ser_num = channel.read_u32();
-                let line_nr = channel.read_u32();
-
-            }
-            _ => {
-                channel.skip(length as i64)
-            }
-        }
-    }
-
-    test(100);
+    // test(100);
 
     Ok(())
 }
@@ -169,27 +101,4 @@ fn test(len: u64) {
     }
 }
 
-fn read_utf8(channel: &mut Channel, len: i64) {
-    // 常量池
-    let mut length = len - id_size;
-    let symbol_id = channel.read_id()?;
-    let name = channel.read_str(length as usize)?;
-    constant_pool.insert(symbol_id, name);
-}
 
-fn read_load_class() {
-
-}
-
-const HPROF_UTF8: u8 = 0x01;
-const HPROF_LOAD_CLASS: u8 = 0x02;
-const HPROF_UNLOAD_CLASS: u8 = 0x03;
-const HPROF_FRAME: u8 = 0x04;
-const HPROF_TRACE: u8 = 0x05;
-const HPROF_ALLOC_SITES: u8 = 0x06;
-const HPROF_HEAP_SUMMARY: u8 = 0x07;
-const HPROF_START_THREAD: u8 = 0x0A;
-const HPROF_END_THREAD: u8 = 0x0B;
-const HPROF_HEAP_DUMP: u8 = 0x0C;
-const HPROF_CPU_SAMPLES: u8 = 0x0D;
-const HPROF_CONTROL_SETTINGS: u8 = 0x0E;

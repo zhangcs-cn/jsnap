@@ -3,6 +3,11 @@ use std::io::{Error, ErrorKind, Read, Cursor, SeekFrom, Seek};
 use std::path::Path;
 use byteordered::byteorder::{ReadBytesExt, BigEndian};
 
+type Byte = u8;
+type Short = u16;
+type Int = u32;
+type Long = u64;
+
 pub trait Channel {
     fn reads(&mut self, buf: &mut [u8]) -> usize;
     fn read(&mut self, len: usize) -> Result<Vec<u8>, Error>;
@@ -35,6 +40,11 @@ pub trait Channel {
         let mut buf: Vec<u8> = self.read(len)?;
         let result: &str = std::str::from_utf8(&buf).unwrap();
         Ok(result.to_string())
+    }
+    fn read_char(&mut self) -> Result<char, Error> {
+        let str = self.read_str(1)?;
+        let byte = str.chars().next().unwrap();
+        Ok(byte)
     }
 }
 
@@ -75,5 +85,8 @@ impl HprofChannel {
         } else {
             Err(Error::new(ErrorKind::NotFound, file.err().unwrap()))
         };
+    }
+    pub fn size(&mut self) -> u64 {
+        self.size
     }
 }

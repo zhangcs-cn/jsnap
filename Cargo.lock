@@ -182,6 +182,7 @@ dependencies = [
  "clap",
  "dirs",
  "indicatif",
+ "lazy_static",
  "nix",
 ]
 
