@@ -2,7 +2,7 @@ use std::path::Path;
 use std::process::id;
 use std::result;
 use clap::Error;
-use crate::io::channel::{Byte, Channel, Int, Long, Short};
+use super::channel::{Byte, Channel, Int, Long, Short};
 
 pub type Result<T> = result::Result<T, std::io::Error>;
 

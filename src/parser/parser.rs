@@ -1,9 +1,9 @@
 use std::io::Error;
 use std::path::{Path, PathBuf};
-use crate::io::channel::Channel;
-use crate::io::wrapper::ChannelWrapper;
-use crate::io::error::EndOfFile;
-use crate::model::snapshot::Snapshot;
+use super::super::io::channel::Channel;
+use super::super::io::wrapper::ChannelWrapper;
+use super::super::io::error::EndOfFile;
+use super::super::model::snapshot::Snapshot;
 
 const HPROF_HEADER_101: &str = "JAVA PROFILE 1.0.1";
 const HPROF_HEADER_102: &str = "JAVA PROFILE 1.0.2";

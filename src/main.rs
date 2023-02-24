@@ -4,13 +4,15 @@ mod cli;
 mod model;
 
 use std::fs;
-use crate::cli::cli::get_args;
+use cli::cli::get_args;
 use std::path::{Path, PathBuf, MAIN_SEPARATOR};
 use std::process::exit;
-use crate::parser::parser::Parser;
+use parser::parser::Parser;
 
 fn main() {
+    // 参数
     let (file_path, data_dir) = get_args();
+
     let file_path = Path::new(&file_path);
     if !file_path.exists() {
         // 文件不存在
