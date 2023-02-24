@@ -2,6 +2,7 @@ mod io;
 mod parser;
 mod cli;
 mod model;
+mod db;
 
 use std::fs;
 use cli::cli::get_args;

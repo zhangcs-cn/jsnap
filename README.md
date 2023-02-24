@@ -1,1 +1,2 @@
-i# jsnap
+# Java Snapshot Analysis Tool
+

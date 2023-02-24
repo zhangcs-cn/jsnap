@@ -5,7 +5,7 @@ use std::path::Path;
 use std::result;
 use super::error::{EndOfFile};
 
-pub type Result<T> = result::Result<T, Error>;
+pub type Result<T> = result::Result<T, std::io::Error>;
 pub type Byte = u8;
 pub type Short = u16;
 pub type Int = u32;

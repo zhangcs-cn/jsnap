@@ -1,4 +1,5 @@
 use std::io::Error;
+use std::result::Result;
 use std::path::{Path, PathBuf};
 use super::super::io::wrapper::ChannelWrapper;
 use super::super::io::error::EndOfFile;
@@ -32,7 +33,7 @@ impl Parser {
         Parser { file_path: file_path.to_path_buf() }
     }
 
-    pub fn parser(&self) -> Result<Snapshot, Error> {
+    pub fn parser(&self) -> std::result::Result<Snapshot, std::io::Error> {
         let mut channel = ChannelWrapper::wrapper(&self.file_path)?;
 
         // 版本
