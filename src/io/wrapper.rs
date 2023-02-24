@@ -1,7 +1,4 @@
 use std::path::Path;
-use std::process::id;
-use std::result;
-use clap::Error;
 use super::channel::{Byte, Channel, Int, Long, Short, Result};
 
 pub struct ChannelWrapper {
@@ -24,7 +21,7 @@ impl ChannelWrapper {
     }
     pub fn read_utf8(&mut self, len: Int) -> Result<(Long, String)> {
         // 常量池
-        let mut length = len - self.id_size;
+        let length = len - self.id_size;
         let symbol_id = self.read_id()?;
         let name = self.channel.read_str(length as usize)?;
         Ok((symbol_id, name))
@@ -105,7 +102,7 @@ impl ChannelWrapper {
     }
 
     pub fn read_id(&mut self) -> Result<Long> {
-        let mut id: Long;
+        let id: Long;
         if self.id_size == 4 {
             id = self.channel.read_int()? as Long;
         } else {

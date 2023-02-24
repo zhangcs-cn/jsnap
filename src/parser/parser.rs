@@ -1,6 +1,5 @@
 use std::io::Error;
 use std::path::{Path, PathBuf};
-use super::super::io::channel::Channel;
 use super::super::io::wrapper::ChannelWrapper;
 use super::super::io::error::EndOfFile;
 use super::super::model::snapshot::Snapshot;

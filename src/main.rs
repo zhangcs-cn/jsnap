@@ -5,7 +5,7 @@ mod model;
 
 use std::fs;
 use cli::cli::get_args;
-use std::path::{Path, PathBuf, MAIN_SEPARATOR};
+use std::path::{Path, PathBuf};
 use std::process::exit;
 use parser::parser::Parser;
 

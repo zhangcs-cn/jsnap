@@ -3,7 +3,6 @@ use std::fs::File;
 use std::io::{Cursor, Error, Read, Seek, SeekFrom};
 use std::path::Path;
 use std::result;
-use std::str::Utf8Error;
 use super::error::{EndOfFile};
 
 pub type Result<T> = result::Result<T, Error>;
@@ -64,7 +63,7 @@ impl Channel {
     }
 
     pub fn read_str(&mut self, len: usize) -> Result<String> {
-        let mut buf: Vec<u8> = self.read(len)?;
+        let buf: Vec<u8> = self.read(len)?;
         let result = String::from_utf8_lossy(&buf);
         Ok(result.to_string())
     }
@@ -76,7 +75,7 @@ impl Channel {
     }
 
     pub fn new(file_path: &Path) -> Result<Channel> {
-        let mut file = File::open(file_path)?;
+        let file = File::open(file_path)?;
         let metadata = std::fs::metadata(file_path)?;
         let len = metadata.len();
         let channel = Channel { file, size: len };

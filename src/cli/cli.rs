@@ -1,6 +1,5 @@
-use clap::builder::Str;
-use clap::{Arg, ArgAction, Command, Error};
-use std::path::{Path, PathBuf, MAIN_SEPARATOR};
+use clap::{Arg, ArgAction, Command};
+use std::path::{MAIN_SEPARATOR};
 
 const APP_NAME: &str = "jsnap";
 pub const FILE_ARG_NAME: &str = "file";
