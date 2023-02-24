@@ -2,9 +2,7 @@ use std::path::Path;
 use std::process::id;
 use std::result;
 use clap::Error;
-use super::channel::{Byte, Channel, Int, Long, Short};
-
-pub type Result<T> = result::Result<T, std::io::Error>;
+use super::channel::{Byte, Channel, Int, Long, Short, Result};
 
 pub struct ChannelWrapper {
     channel: Channel,
