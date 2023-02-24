@@ -1,3 +1,3 @@
-pub mod bar;
 pub mod channel;
-pub mod parser;
+pub mod error;
+pub mod wrapper;

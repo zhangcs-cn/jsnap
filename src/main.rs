@@ -1,104 +1,46 @@
 mod io;
+mod parser;
+mod cli;
+mod model;
 
-use clap::builder::Str;
-use clap::{Arg, ArgAction, Command, Error};
-use dirs;
-use dirs::data_dir;
-use indicatif::{ProgressBar, ProgressStyle};
-use io::parser;
-use std::collections::HashMap;
-use std::ffi::OsStr;
 use std::fs;
-use std::fs::File;
-use std::io::{ErrorKind, Read};
+use crate::cli::cli::get_args;
 use std::path::{Path, PathBuf, MAIN_SEPARATOR};
+use std::process::exit;
+use crate::parser::parser::Parser;
 
-pub const APP_NAME: &str = "jsnap";
-pub const FILE_ARG_NAME: &str = "file";
-pub const DATA_ARG_NAME: &str = "data";
-
-fn cli() -> Command {
-    Command::new(APP_NAME)
-        .about("Java Snapshot Analysis Tool")
-        .author("zcs")
-        .version("0.1.0")
-        // .arg_required_else_help(true)
-        .arg(
-            Arg::new(DATA_ARG_NAME)
-                .short('d')
-                .long("data")
-                .action(ArgAction::Set)
-                .help("data file directory"),
-        )
-        // .arg(
-        //     Arg::new(FILE_ARG_NAME)
-        //         .required(true)
-        //         .help("a snapshots file")
-        //         .action(ArgAction::Set)
-        //         .num_args(1),
-        // )
-}
-
-fn main() -> std::io::Result<()> {
-    let matches = cli().get_matches();
-
-    // let file = matches.get_one::<String>(FILE_ARG_NAME).unwrap();
-   let file = "F:/20230103.hprof";
-    println!("file -> {}", file);
-
-    let file_path = Path::new(file);
+fn main() {
+    let (file_path, data_dir) = get_args();
+    let file_path = Path::new(&file_path);
     if !file_path.exists() {
-        eprintln!("文件不存在 '{}'", file_path.to_str().unwrap());
+        // 文件不存在
+        eprintln!("文件不存在: {}", file_path.display());
+        exit(1)
     }
-    if file_path.is_dir() {
-        eprintln!("不支持指定文件夹 '{}'", file_path.to_str().unwrap());
+    if !file_path.is_file() {
+        // 不支持使用文件目录
+        eprintln!("请选择需要分析的文件: {}", file_path.display());
+        exit(1)
     }
 
+    // 文件名
     let file_stem = file_path.file_stem().unwrap();
-    println!("{:?}", file_stem);
 
-    let data_dir = matches.get_one::<String>(DATA_ARG_NAME);
-    let data_dir_path: String = if data_dir.is_none() {
-        let dir = dirs::home_dir().unwrap_or_else(|| dirs::data_local_dir().unwrap());
-        format!("{}{}.jsnap", dir.display(), MAIN_SEPARATOR)
-    } else {
-        format!("{}", data_dir.unwrap())
-    };
-    println!("data -> {}", data_dir_path);
-
+    // 工作目录 = {数据目录}/{文件名目录}
     let mut work_path = PathBuf::new();
-    work_path.push(data_dir_path);
+    work_path.push(data_dir);
     work_path.push(file_stem);
-    println!("{}", work_path.display());
-    fs::create_dir_all(work_path.clone())
-        .expect(format!("无法写数据{}", work_path.display()).as_str());
-
-    let mut snap = parser::parse(file_path);
-    // match snap {
-    //     Ok(mut snap) => {
-    //         println!("{}", snap.get_version());
-    //         println!("{}", snap.get_id_size());
-    //         println!("{}", snap.get_timestamp());
-    //     }
-    //     Err(_) => {}
-    // }
-
-    // test(100);
-
-    Ok(())
-}
-
-fn test(len: u64) {
-    let pd = ProgressBar::new(len);
-    pd.set_style(
-        ProgressStyle::default_bar()
-            .template("{spinner:.green} [{bar:40.cyan/blue}] {pos:>7} {len:7} [{elapsed_precise}]")
-            .unwrap()
-            .progress_chars("#>-"),
-    );
-
-    for _ in 0..100 {
-        pd.inc(1);
-        std::thread::sleep(std::time::Duration::from_millis(100));
+    let result = fs::create_dir_all(work_path.clone());
+    if result.is_err() {
+        eprintln!("无法初始化工作目录: {}", work_path.display().to_string());
+        exit(2)
     }
+
+    let parser = Parser::new(file_path);
+    let snapshot = parser.parser().unwrap();
+    println!("version: {}", snapshot.get_version());
+    println!("oop size: {}", snapshot.get_id_size());
+    println!("timestamp: {}", snapshot.get_timestamp());
 }
+
+
