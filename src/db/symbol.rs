@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::ptr::addr_of;
 use rusqlite::{Connection, params, Result};
 
-const SYMBOL_NAME: &str = "symbol.d";
+const SYMBOL_NAME: &str = "symbol.data";
 const SYMBOL_CREATE_SQL: &str = "CREATE TABLE IF NOT EXISTS tb_symbol (id BIGINT PRIMARY KEY, name TEXT)";
 const SYMBOL_INSERT_SQL: &str = "INSERT INTO tb_symbol (id, name) VALUES (?1, ?2)";
 const SYMBOL_SELECT_SQL: &str = "SELECT id, name FROM tb_symbol where id = ?1";

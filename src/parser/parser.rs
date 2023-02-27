@@ -108,14 +108,17 @@ impl Parser {
                         g_name_index,
                         p_name_index,
                         id_size) = channel.read_start_thread()?;
+                    println!("thread: {}", thread_serial_num);
                 }
                 HPROF_END_THREAD => {
                     // 已结束线程
                     let thread_serial_num = channel.read_int()?;
+                    println!("end thread: {}", thread_serial_num);
                 }
                 HPROF_HEAP_SUMMARY => {
                     // 堆摘要
                     let (live, live_inst, allocate, allocate_inst) = channel.read_heap_summary()?;
+                    println!("summary: live={}, live_inst={}, allocate={}, allocate_inst={}", live, live_inst, allocate, allocate_inst)
                 }
                 _ => {
                     channel.skip(length);
