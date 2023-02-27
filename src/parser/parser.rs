@@ -1,9 +1,12 @@
+use std::collections::HashMap;
+use std::io;
 use std::io::Error;
 use std::result::Result;
 use std::path::{Path, PathBuf};
 use super::super::io::wrapper::ChannelWrapper;
 use super::super::io::error::EndOfFile;
 use super::super::model::snapshot::Snapshot;
+use super::super::db::symbol::SymbolDao;
 
 const HPROF_HEADER_101: &str = "JAVA PROFILE 1.0.1";
 const HPROF_HEADER_102: &str = "JAVA PROFILE 1.0.2";
@@ -26,14 +29,18 @@ const HPROF_HEAP_DUMP_END: u8 = 0x2C;
 
 pub struct Parser {
     file_path: PathBuf,
+    work_path: PathBuf,
 }
 
 impl Parser {
-    pub(crate) fn new(file_path: &Path) -> Parser {
-        Parser { file_path: file_path.to_path_buf() }
+    pub(crate) fn new(file_path: &Path, work_path: &Path) -> Parser {
+        Parser {
+            file_path: file_path.to_path_buf(),
+            work_path: work_path.to_path_buf(),
+        }
     }
 
-    pub fn parser(&self) -> std::result::Result<Snapshot, std::io::Error> {
+    pub fn parser(&self) -> Result<Snapshot, Error> {
         let mut channel = ChannelWrapper::wrapper(&self.file_path)?;
 
         // 版本
@@ -62,6 +69,10 @@ impl Parser {
         // 快照实体
         let snapshot = Snapshot::new(id_size, version, timestamp);
 
+        let mut symbols: HashMap<u64, String> = HashMap::new();
+        let mut classes: Vec<(u32, u64, u64)> = Vec::new();
+        let mut un_load_classes: Vec<(u32)> = Vec::new();
+
         loop {
             let header = channel.read_header();
             if header.is_err() {
@@ -70,13 +81,16 @@ impl Parser {
             let (tag, offset, length) = header?;
             match tag {
                 HPROF_UTF8 => {
-                    let (symbol_id, name) = channel.read_utf8(length)?;
+                    let (symbol_id, symbol_name) = channel.read_utf8(length)?;
+                    symbols.insert(symbol_id, symbol_name);
                 }
                 HPROF_LOAD_CLASS => {
                     let (serial_num, class_id, name_id) = channel.read_load_class()?;
+                    classes.push((serial_num, class_id, name_id));
                 }
                 HPROF_UNLOAD_CLASS => {
                     let class_ser_num = channel.read_unload_class()?;
+                    un_load_classes.push(class_ser_num)
                 }
                 HPROF_FRAME => {
                     let (frame_id, method_name, method_sig, src_file, class_ser_num, line_nr) = channel.read_frame()?;
@@ -109,6 +123,12 @@ impl Parser {
             }
         }
 
+        let symbol_dao = SymbolDao::new(&self.work_path);
+        let mut symbol_dao = match symbol_dao {
+            Ok(dao) => dao,
+            Err(error) => return Err(Error::new(io::ErrorKind::Other, error.to_string()))
+        };
+        symbol_dao.add_all(symbols);
 
         Ok(snapshot)
     }

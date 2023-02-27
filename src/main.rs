@@ -38,8 +38,9 @@ fn main() {
         eprintln!("无法初始化工作目录: {}", work_path.display().to_string());
         exit(2)
     }
+    let work_path = work_path.as_path();
 
-    let parser = Parser::new(file_path);
+    let parser = Parser::new(file_path, work_path);
     let snapshot = parser.parser().unwrap();
     println!("version: {}", snapshot.get_version());
     println!("oop size: {}", snapshot.get_id_size());
@@ -47,3 +48,7 @@ fn main() {
 }
 
 
+#[test]
+fn test_main() {
+
+}
