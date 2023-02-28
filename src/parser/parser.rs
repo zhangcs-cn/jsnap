@@ -1,12 +1,15 @@
 use std::collections::HashMap;
 use std::io;
-use std::io::Error;
+use std::io::{Error, ErrorKind};
 use std::result::Result;
 use std::path::{Path, PathBuf};
+use crate::cli::bar::Bar;
+use crate::io::error::NotSupport;
 use super::super::io::wrapper::ChannelWrapper;
 use super::super::io::error::EndOfFile;
 use super::super::model::snapshot::Snapshot;
 use super::super::db::symbol::SymbolDao;
+use super::super::cli::bar;
 
 const HPROF_HEADER_101: &str = "JAVA PROFILE 1.0.1";
 const HPROF_HEADER_102: &str = "JAVA PROFILE 1.0.2";
@@ -42,6 +45,8 @@ impl Parser {
 
     pub fn parser(&self) -> Result<Snapshot, Error> {
         let mut channel = ChannelWrapper::wrapper(&self.file_path)?;
+        let total_size = channel.size();
+        let bar = Bar::new(String::from("Reading file"), total_size);
 
         // 版本
         let mut version = String::new();
@@ -57,14 +62,18 @@ impl Parser {
         }
 
         if version != HPROF_HEADER_101 && version != HPROF_HEADER_102 {
-            panic!("不支持的版本: {}", version)
+            eprintln!("不支持的版本: {}", version);
+            return Err(Error::from(NotSupport));
         };
+        bar.inc(version.len() as u64);
 
         // oop size
         let id_size = channel.read_id_size()?;
+        bar.inc(4);
 
         // 时间戳（毫秒）
         let timestamp = channel.read_long()?;
+        bar.inc(8);
 
         // 快照实体
         let snapshot = Snapshot::new(id_size, version, timestamp);
@@ -82,22 +91,33 @@ impl Parser {
             match tag {
                 HPROF_UTF8 => {
                     let (symbol_id, symbol_name) = channel.read_utf8(length)?;
+                    bar.inc(id_size as u64);
+                    bar.inc((length - id_size) as u64);
                     symbols.insert(symbol_id, symbol_name);
                 }
                 HPROF_LOAD_CLASS => {
                     let (serial_num, class_id, name_id) = channel.read_load_class()?;
+                    bar.inc(4);
+                    bar.inc(id_size as u64);
+                    bar.inc(4);
+                    bar.inc(id_size as u64);
                     classes.push((serial_num, class_id, name_id));
                 }
                 HPROF_UNLOAD_CLASS => {
                     let class_ser_num = channel.read_unload_class()?;
+                    bar.inc(4);
                     un_load_classes.push(class_ser_num)
                 }
                 HPROF_FRAME => {
                     let (frame_id, method_name, method_sig, src_file, class_ser_num, line_nr) = channel.read_frame()?;
+                    bar.inc((4 * id_size) as u64);
+                    bar.inc(8);
                 }
                 HPROF_TRACE => {
                     // 堆栈
                     let (stack_trace_nr, thread_nr, frame_ids) = channel.read_hprof_trace()?;
+                    bar.inc(12);
+                    bar.inc((frame_ids.len() * (id_size as usize)) as u64);
                 }
                 HPROF_START_THREAD => {
                     // 线程
@@ -109,19 +129,25 @@ impl Parser {
                         p_name_index,
                         id_size) = channel.read_start_thread()?;
                     println!("thread: {}", thread_serial_num);
+                    bar.inc((4 * id_size) as u64);
+                    bar.inc(8);
                 }
                 HPROF_END_THREAD => {
                     // 已结束线程
                     let thread_serial_num = channel.read_int()?;
+                    bar.inc(4);
                     println!("end thread: {}", thread_serial_num);
                 }
                 HPROF_HEAP_SUMMARY => {
                     // 堆摘要
                     let (live, live_inst, allocate, allocate_inst) = channel.read_heap_summary()?;
+                    bar.inc(8);
+                    bar.inc(16);
                     println!("summary: live={}, live_inst={}, allocate={}, allocate_inst={}", live, live_inst, allocate, allocate_inst)
                 }
                 _ => {
                     channel.skip(length);
+                    bar.inc(length as u64);
                 }
             }
         }
@@ -132,6 +158,8 @@ impl Parser {
             Err(error) => return Err(Error::new(io::ErrorKind::Other, error.to_string()))
         };
         symbol_dao.add_all(symbols);
+
+        bar.finish_with_message("Finished");
 
         Ok(snapshot)
     }

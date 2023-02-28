@@ -1,2 +1,2 @@
 pub mod cli;
-mod bar;
+pub mod bar;

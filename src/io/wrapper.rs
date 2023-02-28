@@ -1,4 +1,5 @@
 use std::path::Path;
+use indicatif::ProgressBar;
 use super::channel::{Byte, Channel, Int, Long, Short, Result};
 
 pub struct ChannelWrapper {
@@ -9,6 +10,7 @@ pub struct ChannelWrapper {
 impl ChannelWrapper {
     pub fn wrapper(file_path: &Path) -> Result<ChannelWrapper> {
         let channel = Channel::new(file_path)?;
+
         Ok(
             ChannelWrapper { channel, id_size: 0 }
         )
@@ -134,5 +136,9 @@ impl ChannelWrapper {
 
     pub fn skip(&mut self, len: u32) {
         self.channel.skip(len as i64)
+    }
+
+    pub fn size(&self) -> u64 {
+        self.channel.size()
     }
 }

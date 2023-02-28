@@ -1,23 +1,22 @@
-use indicatif::{ProgressBar, ProgressStyle};
+use std::fmt::Write;
+use indicatif::{ProgressBar, ProgressState, ProgressStyle};
 
 pub struct Bar {
     pd: ProgressBar,
 }
 
 impl Bar {
-    pub fn new(len: u64) -> ProgressBar {
+    pub fn new(msg: String, len: u64) -> ProgressBar {
         let pd = ProgressBar::new(len);
         pd.set_style(
             ProgressStyle::default_bar()
                 .template(
-                    "{spinner:.green} [{bar:40.cyan/blue}] {pos:>7} {len:7} [{elapsed_precise}]",
+                    "{spinner:.green} {msg} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes}",
                 )
                 .unwrap()
                 .progress_chars("#>-"),
         );
+        pd.set_message(msg);
         return pd;
-    }
-    pub fn inc(&mut self, len: u64) {
-        self.pd.inc(len);
     }
 }

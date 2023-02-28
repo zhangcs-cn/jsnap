@@ -5,7 +5,7 @@ use std::path::Path;
 use std::result;
 use super::error::{EndOfFile};
 
-pub type Result<T> = result::Result<T, std::io::Error>;
+pub type Result<T> = result::Result<T, Error>;
 pub type Byte = u8;
 pub type Short = u16;
 pub type Int = u32;
@@ -80,5 +80,9 @@ impl Channel {
         let len = metadata.len();
         let channel = Channel { file, size: len };
         Ok(channel)
+    }
+
+    pub fn size(&self) -> u64 {
+        self.size
     }
 }

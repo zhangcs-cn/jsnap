@@ -17,3 +17,19 @@ impl From<EndOfFile> for Error {
     }
 }
 
+#[derive(Debug)]
+pub struct NotSupport;
+
+impl std::fmt::Display for NotSupport {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Not support")
+    }
+}
+
+impl std::error::Error for NotSupport {}
+
+impl From<NotSupport> for Error {
+    fn from(eof: NotSupport) -> Error {
+        Error::new(std::io::ErrorKind::Other, eof)
+    }
+}
