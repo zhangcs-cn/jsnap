@@ -4,6 +4,7 @@ use std::io::{Error, ErrorKind};
 use std::result::Result;
 use std::path::{Path, PathBuf};
 use crate::cli::bar::Bar;
+use crate::db::class::LoadClassDao;
 use crate::io::error::NotSupport;
 use super::super::io::wrapper::ChannelWrapper;
 use super::super::io::error::EndOfFile;
@@ -158,6 +159,15 @@ impl Parser {
             Err(error) => return Err(Error::new(io::ErrorKind::Other, error.to_string()))
         };
         symbol_dao.add_all(symbols);
+
+        let class_dao = LoadClassDao::new(&self.work_path);
+        let mut class_dao = match class_dao {
+            Ok(dao) => dao,
+            Err(error) => return Err(Error::new(io::ErrorKind::Other, error.to_string()))
+        };
+        class_dao.add_all_class(classes);
+        class_dao.add_all_un_load_class(un_load_classes);
+
 
         bar.finish_with_message("Finished");
 

@@ -1,11 +1,10 @@
+use std::path::{Path, PathBuf};
 use rusqlite::{Connection, params, Result};
 
 const CLASS_NAME: &str = "class.data";
-const CLASS_CREATE_SQL: &str = "CREATE TABLE IF NOT EXISTS tb_load_class (serial_num INT PRIMARY KEY, class_id BIGINT, name_id TEXT)";
-const UN_LOAD_CLASS_CREATE_SQL: &str = "CREATE TABLE IF NOT EXISTS tb_un_load_class (serial_num INT PRIMARY KEY)";
-
+const CLASS_CREATE_SQL: &str = "CREATE TABLE IF NOT EXISTS tb_load_class (serial_num INT PRIMARY KEY, class_id BIGINT, name_id TEXT, status INT default '1')";
 const CLASS_INSERT_SQL: &str = "INSERT INTO tb_load_class (serial_num, class_id, class_name) VALUES (?1, ?2, ?3)";
-const UN_LOAD_CLASS_INSERT_SQL: &str = "INSERT INTO tb_un_load_class (serial_num) VALUES (?1)";
+const CLASS_UPDATE_SQL: &str = "UPDATE tb_load_class set status = 0 where serial_num = ?1";
 
 
 pub struct LoadClassDao {
@@ -13,10 +12,11 @@ pub struct LoadClassDao {
 }
 
 impl LoadClassDao {
-    pub fn new() -> Result<LoadClassDao> {
-        let conn = Connection::open(CLASS_NAME)?;
+    pub fn new(path: &PathBuf) -> Result<LoadClassDao> {
+        let mut file = path.clone();
+        file.push(CLASS_NAME);
+        let conn = Connection::open(file)?;
         let _ = conn.execute(CLASS_CREATE_SQL, []);
-        let _ = conn.execute(UN_LOAD_CLASS_CREATE_SQL, []);
         let dao = LoadClassDao {
             conn: Some(conn)
         };
@@ -37,14 +37,14 @@ impl LoadClassDao {
 
     pub fn add_un_load_class(&mut self, serial_num: u32) {
         let c = self.conn.as_mut().unwrap();
-        let _ = c.execute(UN_LOAD_CLASS_INSERT_SQL, params![serial_num]);
+        let _ = c.execute(CLASS_UPDATE_SQL, params![serial_num]);
     }
 
     pub fn add_all_un_load_class(&mut self, serial_nums: Vec<u32>) {
         let c = self.conn.as_mut().unwrap();
         let tx = c.transaction().unwrap();
         for serial_num in serial_nums {
-            let _ = tx.execute(UN_LOAD_CLASS_INSERT_SQL, params![serial_num]);
+            let _ = tx.execute(CLASS_UPDATE_SQL, params![serial_num]);
         }
         let _ = tx.commit();
     }

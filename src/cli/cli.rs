@@ -26,7 +26,7 @@ pub fn get_args() -> (String, String) {
 fn cli() -> Command {
     Command::new(APP_NAME)
         .about("Java堆转储快照文件分析工具")
-        .author("zcs")
+        .author("zhangcs")
         .version("0.1.0")
         .arg_required_else_help(true)
         .arg(
