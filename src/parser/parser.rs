@@ -4,7 +4,7 @@ use std::io::{Error, ErrorKind};
 use std::result::Result;
 use std::path::{Path, PathBuf};
 use crate::cli::bar::Bar;
-use crate::db::class::LoadClassDao;
+use crate::db::class::{LoadClassDao};
 use crate::io::error::NotSupport;
 use super::super::io::wrapper::ChannelWrapper;
 use super::super::io::error::EndOfFile;
@@ -80,8 +80,8 @@ impl Parser {
         let snapshot = Snapshot::new(id_size, version, timestamp);
 
         let mut symbols: HashMap<u64, String> = HashMap::new();
-        let mut classes: Vec<(u32, u64, u64)> = Vec::new();
-        let mut un_load_classes: Vec<(u32)> = Vec::new();
+
+        let mut classes: HashMap<u32, (u32, u64, u64, String, u32)> = HashMap::new();
 
         loop {
             let header = channel.read_header();
@@ -92,33 +92,39 @@ impl Parser {
             match tag {
                 HPROF_UTF8 => {
                     let (symbol_id, symbol_name) = channel.read_utf8(length)?;
-                    bar.inc(id_size as u64);
-                    bar.inc((length - id_size) as u64);
                     symbols.insert(symbol_id, symbol_name);
+
+                    bar.inc((id_size + (length - id_size)) as u64);
                 }
                 HPROF_LOAD_CLASS => {
-                    let (serial_num, class_id, name_id) = channel.read_load_class()?;
-                    bar.inc(4);
-                    bar.inc(id_size as u64);
-                    bar.inc(4);
-                    bar.inc(id_size as u64);
-                    classes.push((serial_num, class_id, name_id));
+                    let (serial_num, class_id, _, class_name_id) = channel.read_load_class()?;
+                    let class_name = if class_name_id == 0 {
+                        "".to_string()
+                    } else {
+                        let mut name = String::from("unresolved name ");
+                        name.push_str(&*class_name_id.to_string());
+                        let name = symbols.get(&class_name_id).unwrap_or(&name);
+                        name.replace("/", ".")
+                    };
+                    classes.insert(serial_num, (serial_num, class_id, class_name_id, class_name, 1 as u32));
+
+                    bar.inc(8 + (2 * id_size) as u64);
                 }
                 HPROF_UNLOAD_CLASS => {
                     let class_ser_num = channel.read_unload_class()?;
+                    let (_, _, _, _, class_status) = classes.get_mut(&class_ser_num).unwrap();
+                    *class_status = 0;
+
                     bar.inc(4);
-                    un_load_classes.push(class_ser_num)
                 }
                 HPROF_FRAME => {
                     let (frame_id, method_name, method_sig, src_file, class_ser_num, line_nr) = channel.read_frame()?;
-                    bar.inc((4 * id_size) as u64);
-                    bar.inc(8);
+                    bar.inc(8 + (4 * id_size) as u64);
                 }
                 HPROF_TRACE => {
                     // 堆栈
                     let (stack_trace_nr, thread_nr, frame_ids) = channel.read_hprof_trace()?;
-                    bar.inc(12);
-                    bar.inc((frame_ids.len() * (id_size as usize)) as u64);
+                    bar.inc(12 + (frame_ids.len() * (id_size as usize)) as u64);
                 }
                 HPROF_START_THREAD => {
                     // 线程
@@ -130,8 +136,7 @@ impl Parser {
                         p_name_index,
                         id_size) = channel.read_start_thread()?;
                     println!("thread: {}", thread_serial_num);
-                    bar.inc((4 * id_size) as u64);
-                    bar.inc(8);
+                    bar.inc(8 + (4 * id_size) as u64);
                 }
                 HPROF_END_THREAD => {
                     // 已结束线程
@@ -142,8 +147,7 @@ impl Parser {
                 HPROF_HEAP_SUMMARY => {
                     // 堆摘要
                     let (live, live_inst, allocate, allocate_inst) = channel.read_heap_summary()?;
-                    bar.inc(8);
-                    bar.inc(16);
+                    bar.inc(24);
                     println!("summary: live={}, live_inst={}, allocate={}, allocate_inst={}", live, live_inst, allocate, allocate_inst)
                 }
                 _ => {
@@ -153,21 +157,22 @@ impl Parser {
             }
         }
 
+        // 符号
         let symbol_dao = SymbolDao::new(&self.work_path);
         let mut symbol_dao = match symbol_dao {
             Ok(dao) => dao,
-            Err(error) => return Err(Error::new(io::ErrorKind::Other, error.to_string()))
+            Err(error) => return Err(Error::new(ErrorKind::Other, error.to_string()))
         };
         symbol_dao.add_all(symbols);
 
+        // 类
         let class_dao = LoadClassDao::new(&self.work_path);
         let mut class_dao = match class_dao {
             Ok(dao) => dao,
-            Err(error) => return Err(Error::new(io::ErrorKind::Other, error.to_string()))
+            Err(error) => return Err(Error::new(ErrorKind::Other, error.to_string()))
         };
-        class_dao.add_all_class(classes);
-        class_dao.add_all_un_load_class(un_load_classes);
-
+        let values = classes.values().cloned().collect();
+        class_dao.add_all_class(values);
 
         bar.finish_with_message("Finished");
 

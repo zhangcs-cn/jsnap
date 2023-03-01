@@ -15,3 +15,4 @@ lazy_static = "1.4.0"
 rusqlite = { version = "0.28.0", features = ["bundled"] }
 exitcode = "1.1.2"
 dialoguer = "0.10.3"
+hex = "0.4.3"

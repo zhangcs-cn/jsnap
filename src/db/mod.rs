@@ -1,3 +1,4 @@
 pub mod symbol;
 pub mod class;
-mod index;
+pub mod index;
+pub mod thread;

@@ -29,13 +29,13 @@ impl ChannelWrapper {
         Ok((symbol_id, name))
     }
 
-    pub fn read_load_class(&mut self) -> Result<(Int, Long, Long)> {
+    pub fn read_load_class(&mut self) -> Result<(Int, Long, Int, Long)> {
         // 加载类
         let serial_num = self.channel.read_int()?;
         let class_id = self.read_id()?;
-        self.channel.skip(4);
+        let stack_trace_serial_no = self.channel.read_int()?;
         let name_id = self.read_id()?;
-        Ok((serial_num, class_id, name_id))
+        Ok((serial_num, class_id, stack_trace_serial_no, name_id))
     }
 
     pub fn read_unload_class(&mut self) -> Result<Int> {
