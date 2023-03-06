@@ -82,6 +82,7 @@ impl Parser {
         let mut symbols: HashMap<u64, String> = HashMap::new();
 
         let mut classes: HashMap<u32, (u32, u64, u64, String, u32)> = HashMap::new();
+        let mut class_name_from_serial_no = HashMap::new();
 
         loop {
             let header = channel.read_header();
@@ -98,15 +99,9 @@ impl Parser {
                 }
                 HPROF_LOAD_CLASS => {
                     let (serial_num, class_id, _, class_name_id) = channel.read_load_class()?;
-                    let class_name = if class_name_id == 0 {
-                        "".to_string()
-                    } else {
-                        let mut name = String::from("unresolved name ");
-                        name.push_str(&*class_name_id.to_string());
-                        let name = symbols.get(&class_name_id).unwrap_or(&name);
-                        name.replace("/", ".")
-                    };
+                    let class_name = self.get_name_from_id(class_name_id, &symbols);
                     classes.insert(serial_num, (serial_num, class_id, class_name_id, class_name, 1 as u32));
+                    class_name_from_serial_no.insert(serial_num, name);
 
                     bar.inc(8 + (2 * id_size) as u64);
                 }
@@ -177,6 +172,23 @@ impl Parser {
         bar.finish_with_message("Finished");
 
         Ok(snapshot)
+    }
+
+    fn get_name_from_id(&self, id: u64, symbols: &HashMap<u64, String>) -> String {
+        if id == 0 {
+            return "".to_string();
+        }
+
+        let name = symbols.get(&id);
+        if name.is_none() {
+            let mut name = String::from("unresolved name ");
+            name.push_str(&*id.to_string());
+            return name;
+        }
+
+        let name = name.unwrap();
+        let name = name.replace("/", ".");
+        return name;
     }
 }
 
