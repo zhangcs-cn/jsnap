@@ -1,0 +1,14 @@
+[package]
+name = "jsnap"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# 参数解析
+clap = "4.2.7"
+# 进度条
+indicatif = "0.17.3"
+# 数据库
+rusqlite = { version = "0.29.0", features = ["bundled"] }
+# 退出状态码
+exitcode = "1.1.2"
