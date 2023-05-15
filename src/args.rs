@@ -49,7 +49,7 @@ pub fn get_args() -> Args {
     let data_dir = matches.get_one::<String>(data_arg_name);
     let data_dir = match data_dir {
         Some(data_dir) => data_dir.to_string(),
-        None => format!(".{}jsnap", MAIN_SEPARATOR)
+        None => format!(".{}.jsnap", MAIN_SEPARATOR)
     };
 
     // 重新分析
