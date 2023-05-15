@@ -2,3 +2,13 @@
 
 适用于内网服务器环境的Java堆栈快照文件分析工具。
 
+## build
+
+```shell
+$ cargo build --release
+```
+
+```shell
+$ cargo build --target=x86_64-unknown-linux-musl --release
+```
+
