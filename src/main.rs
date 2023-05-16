@@ -1,6 +1,7 @@
 mod args;
 mod parser;
 mod errors;
+mod io;
 
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -8,7 +9,6 @@ use std::process::exit;
 use std::fs;
 use std::fs::File;
 use std::io::BufReader;
-use clap::Command;
 use crate::args::Args;
 use crate::parser::hprof;
 
@@ -82,6 +82,5 @@ fn get_path_real_name(path: &mut PathBuf) -> String {
 
 #[test]
 fn test_main() {
-    let mut cmd = Command::cargo_bin("jsnap")?;
-    cmd.arg("-f").arg(file_path);
+
 }

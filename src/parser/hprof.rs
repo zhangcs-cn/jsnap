@@ -2,9 +2,10 @@ use std::ffi::{OsStr, OsString};
 use std::fs::File;
 use std::io::{BufReader, Cursor, ErrorKind, SeekFrom};
 use std::path::PathBuf;
-use std::io::Result;
 use std::io::Error;
-use crate::parser::channel::{Channel, Long};
+use crate::parser::dump::get_heap_dump;
+use crate::parser::reader;
+use crate::parser::reader::{Reader, Result, Byte, Int, Long};
 
 const HPROF_HEADER_101: &str = "JAVA PROFILE 1.0.1";
 const HPROF_HEADER_102: &str = "JAVA PROFILE 1.0.2";
@@ -41,31 +42,18 @@ impl Hprof {
     }
 }
 
-
+/// 解析堆转储快照文件
 pub fn parse(file_path: PathBuf, work_dir: PathBuf) -> Result<Hprof> {
     let file_name = file_path.to_str().unwrap().to_string();
-    let mut channel = Channel::new(file_path)?;
+    let mut reader = Reader::new(file_path)?;
 
     // 版本
-    let mut version = get_version(&mut channel)?;
-
-    // oop size
-    let id_size = channel.read_int()?;
-
-    // 时间戳（毫秒）
-    let timestamp = channel.read_long()?;
-
-    Ok(Hprof { file_name, id_size: id_size as u64, version, timestamp })
-}
-
-/// 获取版本号
-fn get_version(channel: &mut Channel) -> Result<String> {
     let mut version = String::new();
     for index in 1..20 {
         if index > 20 {
             break;
         }
-        let byte = channel.read_char()?;
+        let byte = reader.read_char()?;
         if byte == '\0' {
             break;
         }
@@ -76,7 +64,91 @@ fn get_version(channel: &mut Channel) -> Result<String> {
         eprintln!("不支持的版本: {}", version);
         return Err(Error::new(ErrorKind::Unsupported, format!("不支持的版本: {}", version)));
     };
-    Ok(version)
-}
 
+    // oop size
+    let id_size = reader.get_id_size()?;
+
+    // 时间戳（毫秒）
+    let timestamp = reader.get_timestamp()?;
+
+    loop {
+        let header = reader.get_header();
+        if header.is_err() {
+            break;
+        }
+        let (tag, offset, length) = header?;
+        match tag {
+            HPROF_UTF8 => {
+                // a UTF8-encoded name
+                let (symbol_id, symbol_name) = reader.get_utf8(length)?;
+                println!("{} = {}", symbol_id, symbol_name)
+            }
+            HPROF_LOAD_CLASS => {
+                // a newly loaded class
+                let (serial_num, class_id, _, class_name_id) = reader.get_load_class()?;
+            }
+            HPROF_UNLOAD_CLASS => {
+                // an unloading class
+                let class_ser_num = reader.get_unload_class()?;
+            }
+            HPROF_FRAME => {
+                // a Java stack frame
+                let (frame_id, method_name, method_sig, src_file, class_ser_num, line_nr) = reader.get_frame()?;
+            }
+            HPROF_TRACE => {
+                // a Java stack trace
+                let (stack_trace_nr, thread_nr, frame_ids) = reader.get_hprof_trace()?;
+                println!("stack_trace_nr={}, thread_nr={}", stack_trace_nr, thread_nr);
+            }
+            HPROF_ALLOC_SITES => {
+                // a set of heap allocation sites, obtained after GC
+                reader.skip(length);
+            }
+            HPROF_HEAP_SUMMARY => {
+                // heap summary
+                let (live, live_inst, allocate, allocate_inst) = reader.get_heap_summary()?;
+            }
+            HPROF_START_THREAD => {
+                // a newly started thread.
+                let (thread_serial_num,
+                    thread_obj_id,
+                    trace_serial_num,
+                    t_name_index,
+                    g_name_index,
+                    p_name_index,
+                    id_size) = reader.get_start_thread()?;
+            }
+            HPROF_END_THREAD => {
+                // a terminating thread.
+                let thread_serial_num = reader.read_int()?;
+            }
+            HPROF_HEAP_DUMP => {
+                // denote a heap dump
+                // reader.skip(length);
+                let _ = get_heap_dump(&mut reader, length);
+            }
+            HPROF_CPU_SAMPLES => {
+                // a set of sample traces of running threads
+                reader.skip(length);
+            }
+            HPROF_CONTROL_SETTINGS => {
+                // the settings of on/off switches
+                reader.skip(length);
+            }
+            HPROF_HEAP_DUMP_SEGMENT => {
+                // denote a heap dump segment
+                reader.skip(length);
+            }
+            HPROF_HEAP_DUMP_END => {
+                //  denotes the end of a heap dump
+                reader.skip(length);
+            }
+            _ => {
+                reader.skip(length);
+            }
+        }
+    }
+
+    Ok(Hprof { file_name, id_size: id_size as u64, version, timestamp })
+}
 

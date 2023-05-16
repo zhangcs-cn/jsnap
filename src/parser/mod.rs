@@ -1,2 +1,4 @@
 pub mod hprof;
-mod channel;
+mod reader;
+mod dump;
+pub mod errors;
