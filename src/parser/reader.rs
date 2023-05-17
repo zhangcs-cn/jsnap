@@ -3,13 +3,6 @@ use crate::io::channel::{Channel, Result, Byte, Short, Int, Long};
 use std::path::PathBuf;
 use derive_getters::Getters;
 
-/// # Hprof File Reader
-pub struct Reader {
-    ///
-    channel: Channel,
-    id_size: u32,
-}
-
 /// # A section from the hprof file
 pub trait Section {
     fn read(reader: &mut Reader, len: Int) -> Self;
@@ -58,25 +51,26 @@ impl Section for LoadedClass {
     }
 }
 
-#[derive(Clone, Debug, Getters)]
-pub struct UnLoadClass {
-    class_ser_num: Int,
-}
-
-impl Section for UnLoadClass {
-    fn read(reader: &mut Reader, _: Int) -> Self {
-        let class_ser_num = reader.read_int();
-        UnLoadClass { class_ser_num }
-    }
-}
-
+/// # A Java stack frame
+/// # Examples
+/// ```rust
+/// crate::parser::reader::{Frame};
+///
+/// let reader = Reader::new(file_path)?;
+/// ...
+/// let frame = reader.read::<Frame>(_);
+/// ```
 #[derive(Clone, Debug, Getters)]
 pub struct Frame {
     id: Long,
+    /// 方法名
     method_name: Long,
+    /// 方法签名
     method_sig: Long,
+    /// 源码文件名
     src_file: Long,
     class_ser_num: Int,
+    /// 行号
     line_nr: Int,
 }
 
@@ -176,20 +170,28 @@ impl Section for HeapSummary {
     }
 }
 
+/// # Hprof File Reader
+pub struct Reader {
+    ///
+    channel: Channel,
+    id_size: u32,
+}
+
 impl Reader {
     pub fn new(file_path: &PathBuf) -> Result<Self> {
         let channel = Channel::open(&file_path)?;
         Ok(Self { channel, id_size: 0 })
     }
 
+    /// # read a section
     pub fn read<T: Section>(&mut self, len: Int) -> T {
         T::read(self, len)
     }
 
     pub fn get_header(&mut self) -> Result<(Byte, Int, Int)> {
         let tag = self.channel.read_byte()?;
-        let offset = self.read_int();
-        let length = self.read_int();
+        let offset = self.channel.read_int()?;
+        let length = self.channel.read_int()?;
         Ok((tag, offset, length))
     }
 
@@ -201,17 +203,15 @@ impl Reader {
         }
     }
 
-    pub fn get_timestamp(&mut self) -> Result<Long> {
-        self.channel.read_long()
+    pub fn get_timestamp(&mut self) -> Long {
+        self.read_long()
     }
 
-    pub fn get_id_size(&mut self) -> Result<Int> {
-        if self.id_size > 0 {
-            return Ok(self.id_size);
+    pub fn get_id_size(&mut self) -> Int {
+        if self.id_size <= 0 {
+            self.id_size = self.read_int();
         }
-        let id_size = self.read_int();
-        self.id_size = id_size;
-        Ok(id_size)
+        self.id_size
     }
 
     pub fn read_byte(&mut self) -> Byte {
@@ -226,12 +226,12 @@ impl Reader {
         self.channel.read_long().unwrap()
     }
 
-    pub fn read_char(&mut self) -> Result<char> {
-        self.channel.read_char()
+    pub fn read_char(&mut self) -> char {
+        self.channel.read_char().unwrap()
     }
 
-    pub fn read_short(&mut self) -> Result<Short> {
-        self.channel.read_short()
+    pub fn read_short(&mut self) -> Short {
+        self.channel.read_short().unwrap()
     }
 
     pub fn skip(&mut self, len: Int) {

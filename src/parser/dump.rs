@@ -85,23 +85,23 @@ fn read_class(reader: &mut Reader) -> Result<Class> {
 
     let inst_size = reader.read_int();
 
-    let const_pool_size = reader.read_short()?;
+    let const_pool_size = reader.read_short();
     for _ in 0..const_pool_size {
         let index = reader.read_short();
-        let name = format!("<constant pool[{}]>", index?);
+        let name = format!("<constant pool[{}]>", index);
         let t = reader.read_byte();
 
         let val = get_value(reader, t);
     }
 
-    let num_static_fields = reader.read_short()?;
+    let num_static_fields = reader.read_short();
     for _ in 0..num_static_fields {
         let name_id = reader.get_id();
         let t = reader.read_byte();
         let val = get_value(reader, t);
     }
 
-    let num_inst_fields = reader.read_short()?;
+    let num_inst_fields = reader.read_short();
     for _ in 0..num_inst_fields {
         let name_id = reader.get_id();
         let t = reader.read_byte();
@@ -147,7 +147,7 @@ fn get_value(reader: &mut Reader, t: Byte) -> Result<Value> {
             Ok(Value::Bool(byte != 0))
         }
         CHAR_TYPE => {
-            let char = reader.read_char()?;
+            let char = reader.read_char();
             Ok(Value::Char(char))
         }
         FLOAT_TYPE => {
@@ -163,7 +163,7 @@ fn get_value(reader: &mut Reader, t: Byte) -> Result<Value> {
             Ok(Value::Byte(byte))
         }
         SHORT_TYPE => {
-            let short = reader.read_short()?;
+            let short = reader.read_short();
             Ok(Value::Short(short))
         }
         INT_TYPE => {

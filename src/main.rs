@@ -23,10 +23,11 @@ fn main() {
     let hprof = hprof::parse(&file_path, &work_path);
     let hprof = match hprof {
         Ok(hprof) => hprof,
-        Err(_) => exit(exitcode::DATAERR)
+        Err(_) => {
+            eprintln!("解析失败");
+            return exit(exitcode::DATAERR)
+        }
     };
-
-    println!("{}", hprof.get_version());
 
     exit(exitcode::OK)
 }
