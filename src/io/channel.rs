@@ -1,3 +1,6 @@
+/*!
+
+ */
 use std::fs::File;
 use std::io::{BufReader, Error, ErrorKind, Read, Seek, SeekFrom};
 use std::path::PathBuf;
@@ -21,8 +24,10 @@ pub struct Channel {
 
 impl Channel {
     /// Open a file to build a channel
-    /// # Example
+    /// # Examples
     /// ```rust
+    /// use io::channel::{Channel, Result};
+    ///
     /// let file_path = ...
     /// let channel = Channel::open(&file_path);
     /// ```
