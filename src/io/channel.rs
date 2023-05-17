@@ -2,7 +2,7 @@
 
  */
 use std::fs::File;
-use std::io::{BufReader, Error, ErrorKind, Read, Seek, SeekFrom};
+use std::io::{BufReader, Cursor, Error, ErrorKind, Read, Seek, SeekFrom};
 use std::path::PathBuf;
 use std::result;
 use byteordered::byteorder::{BigEndian, ReadBytesExt};
@@ -17,9 +17,9 @@ pub type Double = f64;
 pub type Char = char;
 pub type Boolean = bool;
 
-/// # A channel for reading dump files
+/// # Channel used to read snapshot files
 pub struct Channel {
-    reader: BufReader<File>,
+    file: File,
 }
 
 impl Channel {
@@ -33,13 +33,12 @@ impl Channel {
     /// ```
     pub fn open(file_path: &PathBuf) -> Result<Self> {
         let file = File::open(file_path.clone())?;
-        let mut reader = BufReader::new(file);
-        Ok(Self { reader })
+        Ok(Self { file })
     }
 
     fn read(&mut self, len: usize) -> Result<Vec<u8>> {
         let mut buf: Vec<u8> = vec![Default::default(); len];
-        let count: usize = self.reader.read(&mut buf)?;
+        let count: usize = self.file.read(&mut buf)?;
         if count == 0 || buf.is_empty() {
             return Err(Error::from(ErrorKind::UnexpectedEof));
         }
@@ -47,36 +46,35 @@ impl Channel {
     }
 
     pub fn skip(&mut self, len: i64) {
-        let _ = self.reader.seek(SeekFrom::Current(len));
+        let _ = self.file.seek(SeekFrom::Current(len));
     }
 
     pub fn read_byte(&mut self) -> Result<Byte> {
-        self.reader.read_u8()
+        self.file.read_u8()
     }
 
-    pub fn read_bool(&mut self) -> Result<Boolean> {
-        let val = self.reader.read_u8()?;
-        Ok(val != 0)
+    pub fn read_bool(&mut self) -> Boolean {
+        self.file.read_u8().unwrap() != 0
     }
 
     pub fn read_short(&mut self) -> Result<Short> {
-        self.reader.read_u16::<BigEndian>()
+        self.file.read_u16::<BigEndian>()
     }
 
     pub fn read_int(&mut self) -> Result<Int> {
-        self.reader.read_u32::<BigEndian>()
+        self.file.read_u32::<BigEndian>()
     }
 
     pub fn read_long(&mut self) -> Result<Long> {
-        self.reader.read_u64::<BigEndian>()
+        self.file.read_u64::<BigEndian>()
     }
 
     pub fn read_float(&mut self) -> Result<Float> {
-        self.reader.read_f32::<BigEndian>()
+        self.file.read_f32::<BigEndian>()
     }
 
     pub fn read_double(&mut self) -> Result<Double> {
-        self.reader.read_f64::<BigEndian>()
+        self.file.read_f64::<BigEndian>()
     }
 
     pub fn read_char(&mut self) -> Result<Char> {
@@ -92,6 +90,6 @@ impl Channel {
     }
 
     pub fn position(&mut self) -> Result<u64> {
-        self.reader.seek(SeekFrom::Current(0))
+        self.file.seek(SeekFrom::Current(0))
     }
 }
