@@ -1,7 +1,8 @@
 use std::fmt::format;
 use std::io::{Error, ErrorKind};
 use std::process::id;
-use crate::parser::reader::{Byte, Int, Long, Reader, Result, Short};
+use crate::parser::reader::{Reader};
+use crate::io::channel::{Byte, Int, Long, Result, Short};
 
 const HPROF_GC_ROOT_UNKNOWN: u8 = 0xff;
 const HPROF_GC_ROOT_JNI_GLOBAL: u8 = 0x01;
@@ -17,43 +18,43 @@ pub struct Dump {}
 
 pub fn get_heap_dump(reader: &mut Reader, len: Int) -> Result<Dump> {
     for i in 0..len {
-        let tag = reader.read_byte()?;
+        let tag = reader.read_byte();
         match tag {
             HPROF_GC_ROOT_UNKNOWN => {
-                let id = reader.get_id()?;
+                let id = reader.get_id();
             }
             HPROF_GC_ROOT_THREAD_OBJ => {
-                let id = reader.get_id()?;
+                let id = reader.get_id();
                 let thread_seq = reader.read_int();
                 let stack_seq = reader.read_int();
             }
             HPROF_GC_ROOT_JNI_GLOBAL => {
-                let id = reader.get_id()?;
-                let global_ref_id = reader.get_id()?;
+                let id = reader.get_id();
+                let global_ref_id = reader.get_id();
             }
             HPROF_GC_ROOT_JNI_LOCAL => {
-                let id = reader.get_id()?;
+                let id = reader.get_id();
                 let thread_seq = reader.read_int();
                 let depth = reader.read_int();
             }
             HPROF_GC_ROOT_JAVA_FRAME => {
-                let id = reader.get_id()?;
+                let id = reader.get_id();
                 let thread_seq = reader.read_int();
                 let depth = reader.read_int();
             }
             HPROF_GC_ROOT_NATIVE_STACK => {
-                let id = reader.get_id()?;
+                let id = reader.get_id();
                 let thread_seq = reader.read_int();
             }
             HPROF_GC_ROOT_STICKY_CLASS => {
-                let id = reader.get_id()?;
+                let id = reader.get_id();
             }
             HPROF_GC_ROOT_THREAD_BLOCK => {
-                let id = reader.get_id()?;
+                let id = reader.get_id();
                 let thread_seq = reader.read_int();
             }
             HPROF_GC_ROOT_MONITOR_USED => {
-                let id = reader.get_id()?;
+                let id = reader.get_id();
             }
             HPROF_GC_CLASS_DUMP => {
                 reader.skip(len);
@@ -88,22 +89,22 @@ fn read_class(reader: &mut Reader) -> Result<Class> {
     for _ in 0..const_pool_size {
         let index = reader.read_short();
         let name = format!("<constant pool[{}]>", index?);
-        let t = reader.read_byte()?;
+        let t = reader.read_byte();
 
         let val = get_value(reader, t);
     }
 
     let num_static_fields = reader.read_short()?;
     for _ in 0..num_static_fields {
-        let name_id = reader.get_id()?;
-        let t = reader.read_byte()?;
+        let name_id = reader.get_id();
+        let t = reader.read_byte();
         let val = get_value(reader, t);
     }
 
     let num_inst_fields = reader.read_short()?;
     for _ in 0..num_inst_fields {
-        let name_id = reader.get_id()?;
-        let t = reader.read_byte()?;
+        let name_id = reader.get_id();
+        let t = reader.read_byte();
     }
     
     Ok(Class {
@@ -138,11 +139,11 @@ enum Value {
 fn get_value(reader: &mut Reader, t: Byte) -> Result<Value> {
     return match t {
         OBJECT_TYPE => {
-            let id = reader.get_id()?;
+            let id = reader.get_id();
             Ok(Value::Id(id))
         }
         BOOLEAN_TYPE => {
-            let byte = reader.read_byte()?;
+            let byte = reader.read_byte();
             Ok(Value::Bool(byte != 0))
         }
         CHAR_TYPE => {
@@ -150,15 +151,15 @@ fn get_value(reader: &mut Reader, t: Byte) -> Result<Value> {
             Ok(Value::Char(char))
         }
         FLOAT_TYPE => {
-            let float = reader.read_int()?;
+            let float = reader.read_int();
             Ok(Value::Float(float))
         }
         DOUBLE_TYPE => {
-            let double = reader.read_long()?;
+            let double = reader.read_long();
             Ok(Value::Double(double))
         }
         BYTE_TYPE => {
-            let byte = reader.read_byte()?;
+            let byte = reader.read_byte();
             Ok(Value::Byte(byte))
         }
         SHORT_TYPE => {
@@ -166,11 +167,11 @@ fn get_value(reader: &mut Reader, t: Byte) -> Result<Value> {
             Ok(Value::Short(short))
         }
         INT_TYPE => {
-            let int = reader.read_int()?;
+            let int = reader.read_int();
             Ok(Value::Int(int))
         }
         LONG_TYPE => {
-            let long = reader.read_long()?;
+            let long = reader.read_long();
             Ok(Value::Long(long))
         }
         _ => {

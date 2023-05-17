@@ -20,7 +20,7 @@ fn main() {
     let (file_path, work_path) = init_dir(args);
 
     // 解析
-    let hprof = hprof::parse(file_path, work_path);
+    let hprof = hprof::parse(&file_path, &work_path);
     let hprof = match hprof {
         Ok(hprof) => hprof,
         Err(_) => exit(exitcode::DATAERR)

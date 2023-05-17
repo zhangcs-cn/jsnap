@@ -5,7 +5,8 @@ use std::path::PathBuf;
 use std::io::Error;
 use crate::parser::dump::get_heap_dump;
 use crate::parser::reader;
-use crate::parser::reader::{Reader, Result, Byte, Int, Long};
+use crate::parser::reader::{Frame, HeapSummary, LoadedClass, Reader, StartThread, Trace, UnLoadClass, Utf8};
+use crate::io::channel::{Result, Byte, Int, Long};
 
 const HPROF_HEADER_101: &str = "JAVA PROFILE 1.0.1";
 const HPROF_HEADER_102: &str = "JAVA PROFILE 1.0.2";
@@ -43,9 +44,9 @@ impl Hprof {
 }
 
 /// 解析堆转储快照文件
-pub fn parse(file_path: PathBuf, work_dir: PathBuf) -> Result<Hprof> {
+pub fn parse(file_path: &PathBuf, work_dir: &PathBuf) -> Result<Hprof> {
     let file_name = file_path.to_str().unwrap().to_string();
-    let mut reader = Reader::new(file_path)?;
+    let mut reader = Reader::new(&file_path)?;
 
     // 版本
     let mut version = String::new();
@@ -80,25 +81,26 @@ pub fn parse(file_path: PathBuf, work_dir: PathBuf) -> Result<Hprof> {
         match tag {
             HPROF_UTF8 => {
                 // a UTF8-encoded name
-                let (symbol_id, symbol_name) = reader.get_utf8(length)?;
-                println!("{} = {}", symbol_id, symbol_name)
+                let utf8 = reader.read::<Utf8>(length);
+                println!("{} = {}", utf8.symbol_id(), utf8.name())
             }
             HPROF_LOAD_CLASS => {
                 // a newly loaded class
-                let (serial_num, class_id, _, class_name_id) = reader.get_load_class()?;
+                let loaded_class = reader.read::<LoadedClass>(length);
             }
             HPROF_UNLOAD_CLASS => {
                 // an unloading class
-                let class_ser_num = reader.get_unload_class()?;
+                let unload_class = reader.read::<UnLoadClass>(length);
             }
             HPROF_FRAME => {
                 // a Java stack frame
-                let (frame_id, method_name, method_sig, src_file, class_ser_num, line_nr) = reader.get_frame()?;
+                let frame = reader.read::<Frame>(length);
             }
             HPROF_TRACE => {
                 // a Java stack trace
-                let (stack_trace_nr, thread_nr, frame_ids) = reader.get_hprof_trace()?;
-                println!("stack_trace_nr={}, thread_nr={}", stack_trace_nr, thread_nr);
+                // let (stack_trace_nr, thread_nr, frame_ids) = reader.get_hprof_trace()?;
+                let trace = reader.read::<Trace>(length);
+                println!("stack_trace_nr={}, thread_nr={}", trace.stack_trace_nr(), trace.thread_nr());
             }
             HPROF_ALLOC_SITES => {
                 // a set of heap allocation sites, obtained after GC
@@ -106,21 +108,15 @@ pub fn parse(file_path: PathBuf, work_dir: PathBuf) -> Result<Hprof> {
             }
             HPROF_HEAP_SUMMARY => {
                 // heap summary
-                let (live, live_inst, allocate, allocate_inst) = reader.get_heap_summary()?;
+                let summary = reader.read::<HeapSummary>(length);
             }
             HPROF_START_THREAD => {
                 // a newly started thread.
-                let (thread_serial_num,
-                    thread_obj_id,
-                    trace_serial_num,
-                    t_name_index,
-                    g_name_index,
-                    p_name_index,
-                    id_size) = reader.get_start_thread()?;
+                let thread = reader.read::<StartThread>(length);
             }
             HPROF_END_THREAD => {
                 // a terminating thread.
-                let thread_serial_num = reader.read_int()?;
+                let thread_serial_num = reader.read_int();
             }
             HPROF_HEAP_DUMP => {
                 // denote a heap dump
