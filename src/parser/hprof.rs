@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::io::Error;
 use crate::parser::dump::get_heap_dump;
 use crate::parser::reader;
-use crate::parser::reader::{AllocSites, ControlSettings, CpuSamples, Frame, HeapSummary, LoadedClass, Reader, StartThread, Trace, Utf8};
+use crate::parser::reader::{AllocSites, ControlSettings, CpuSamples, Frame, HeapSummary, Class, Reader, StartThread, Trace, Utf8};
 use crate::io::channel::{Result, Byte, Int, Long};
 use derive_getters::Getters;
 
@@ -89,8 +89,8 @@ pub fn parse(file_path: &PathBuf, _: &PathBuf) -> Result<Hprof> {
             }
             HPROF_LOAD_CLASS => {
                 // a newly loaded class
-                let class = reader.read::<LoadedClass>(length);
-                let class_name = get_name_from_id(*class.name_id(), &symbols);
+                let class = reader.read::<Class>(length);
+                let class_name = get_name_from_id(class.name_id(), &symbols);
             }
             HPROF_UNLOAD_CLASS => {
                 // an unloading class
@@ -105,7 +105,7 @@ pub fn parse(file_path: &PathBuf, _: &PathBuf) -> Result<Hprof> {
                 let method_sig = symbols.get(frame.method_sig());
                 // 源文件
                 let src_file = symbols.get(frame.src_file());
-                println!("{:?} {:?} {:?}", method_name.unwrap(), method_sig.unwrap(), src_file.unwrap());
+                // println!("{:?} {:?} {:?}", method_name.unwrap(), method_sig.unwrap(), src_file.unwrap());
             }
             HPROF_TRACE => {
                 // a Java stack trace
@@ -157,12 +157,12 @@ pub fn parse(file_path: &PathBuf, _: &PathBuf) -> Result<Hprof> {
     Ok(Hprof { file_name, id_size: id_size as u64, version, timestamp })
 }
 
-fn get_name_from_id(id: u64, symbols: &HashMap<u64, String>) -> String {
-    if id == 0 {
+fn get_name_from_id(id: &Long, symbols: &HashMap<Long, String>) -> String {
+    if *id == 0 {
         return "".to_string();
     }
 
-    let name = symbols.get(&id);
+    let name = symbols.get(id);
     if name.is_none() {
         let mut name = String::from("unresolved name ");
         name.push_str(&*id.to_string());

@@ -8,17 +8,26 @@ use std::result;
 use byteordered::byteorder::{BigEndian, ReadBytesExt};
 
 pub type Result<T> = result::Result<T, Error>;
+/// The byte type in the heap dump file
 pub type Byte = u8;
+/// The short type in the heap dump file
 pub type Short = u16;
+/// The int type in the heap dump file
 pub type Int = u32;
+/// The long type in the heap dump file
 pub type Long = u64;
+/// The float type in the heap dump file
 pub type Float = f32;
+/// The double type in the heap dump file
 pub type Double = f64;
+/// The char type in the heap dump file
 pub type Char = char;
+/// The boolean type in the heap dump file
 pub type Boolean = bool;
 
 /// # Channel used to read snapshot files
 pub struct Channel {
+    /// a snapshot file
     file: File,
 }
 
@@ -53,8 +62,9 @@ impl Channel {
         self.file.read_u8()
     }
 
-    pub fn read_bool(&mut self) -> Boolean {
-        self.file.read_u8().unwrap() != 0
+    pub fn read_bool(&mut self) -> Result<Boolean> {
+        let val = self.file.read_u8()?;
+        Ok(val != 0)
     }
 
     pub fn read_short(&mut self) -> Result<Short> {
@@ -89,7 +99,9 @@ impl Channel {
         Ok(result.to_string())
     }
 
+    /// The current position where the file is being read
     pub fn position(&mut self) -> Result<u64> {
         self.file.seek(SeekFrom::Current(0))
     }
+
 }

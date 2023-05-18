@@ -27,24 +27,29 @@ impl Section for Utf8 {
     }
 }
 
+/// # a newly loaded class
 #[derive(Clone, Debug, Getters)]
-pub struct LoadedClass {
+pub struct Class {
+    /// class object ID
+    id: Long,
+    /// class serial number (> 0)
     serial_num: Int,
-    class_id: Long,
+    /// stack trace serial number
     stack_trace_ser: Int,
+    /// class name ID
     name_id: Long,
 }
 
-impl Section for LoadedClass {
+impl Section for Class {
     fn read(reader: &mut Reader, _: Int) -> Self {
         // 常量池
         let serial_num = reader.read_int();
         let class_id = reader.get_id();
         let stack_trace_ser = reader.read_int();
         let name_id = reader.get_id();
-        LoadedClass {
+        Class {
             serial_num,
-            class_id,
+            id: class_id,
             stack_trace_ser,
             name_id,
         }
