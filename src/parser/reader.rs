@@ -170,10 +170,75 @@ impl Section for HeapSummary {
     }
 }
 
+/// # a set of sample traces of running threads
+#[derive(Clone, Debug, Getters)]
+pub struct CpuSamples {
+    num: Int,
+}
+
+impl Section for CpuSamples {
+    fn read(reader: &mut Reader, _: Int) -> Self {
+        let total_num = reader.read_int();
+        let trace_count = reader.read_int();
+        for _ in 0..trace_count {
+            let num_element = reader.read_int();
+            let trace_serial_num = reader.read_int();
+            // Todo
+        }
+
+        CpuSamples {
+            num: total_num
+        }
+    }
+}
+
+/// # the settings of on/off switches
+#[derive(Clone, Debug, Getters)]
+pub struct ControlSettings {
+    /// 0x00000001: alloc traces on/off
+    /// 0x00000002: cpu sampling on/off
+    flags: Int,
+    /// stack trace depth
+    depth: Short,
+}
+
+impl Section for ControlSettings {
+    fn read(reader: &mut Reader, _: Int) -> Self {
+        let flags = reader.read_int();
+        let depth = reader.read_short();
+        ControlSettings {
+            flags,
+            depth,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Getters)]
+pub struct AllocSites {}
+
+impl Section for AllocSites {
+    fn read(reader: &mut Reader, len: Int) -> Self {
+        // 0x0001: incremental vs. complete
+        // 0x0002: sorted by allocation vs. live
+        // 0x0004: whether to force a GC
+        let flags = reader.read_short();
+        let cutoff_ratio = reader.read_int();
+        let total_live_bytes = reader.read_int();
+        let total_live_inst = reader.read_int();    // total live instances
+        let total_bytes_allocated = reader.read_long();
+        let total_inst_allocated = reader.read_long();
+        let num_sites = reader.read_int(); // number of sites that follow
+
+
+        AllocSites {}
+    }
+}
+
 /// # Hprof File Reader
 pub struct Reader {
-    ///
+    /// 文件读取通道
     channel: Channel,
+    /// oop id 大小
     id_size: u32,
 }
 

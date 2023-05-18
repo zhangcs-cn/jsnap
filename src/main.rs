@@ -21,11 +21,11 @@ fn main() {
 
     // 解析
     let hprof = hprof::parse(&file_path, &work_path);
-    let hprof = match hprof {
+    let _ = match hprof {
         Ok(hprof) => hprof,
         Err(_) => {
             eprintln!("解析失败");
-            return exit(exitcode::DATAERR)
+            exit(exitcode::DATAERR)
         }
     };
 
