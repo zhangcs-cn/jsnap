@@ -1,3 +1,5 @@
+use std::fmt;
+use std::fmt::Formatter;
 use crate::io::channel;
 use crate::io::channel::{Channel, Result, Byte, Short, Int, Long};
 use std::path::PathBuf;
@@ -63,7 +65,7 @@ impl Section for Class {
 ///
 /// let reader = Reader::new(file_path)?;
 /// ...
-/// let frame = reader.read::<Frame>(_);
+/// let frame = reader.read::<Frame>(0);
 /// ```
 #[derive(Clone, Debug, Getters)]
 pub struct Frame {
@@ -98,6 +100,15 @@ impl Section for Frame {
     }
 }
 
+/// # a Java stack trace
+/// # Examples
+/// ```rust
+/// crate::parser::reader::{Frame};
+///
+/// let reader = Reader::new(file_path)?;
+/// ...
+/// let trace = reader.read::<Trace>(0);
+/// ```
 #[derive(Clone, Debug, Getters)]
 pub struct Trace {
     stack_trace_nr: Int,
@@ -123,17 +134,24 @@ impl Section for Trace {
     }
 }
 
+impl fmt::Display for Trace {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {}", self.stack_trace_nr, self.thread_nr)
+    }
+}
+
 #[derive(Clone, Debug, Getters)]
-pub struct StartThread {
+pub struct Thread {
+    /// thread object id
+    id: Long,
     thread_serial_num: Int,
-    thread_obj_id: Long,
     trace_serial_num: Int,
     t_name_index: Long,
     g_name_index: Long,
     p_name_index: Long,
 }
 
-impl Section for StartThread {
+impl Section for Thread {
     fn read(reader: &mut Reader, _: Int) -> Self {
         let thread_serial_num = reader.read_int();
         let thread_obj_id = reader.get_id();
@@ -141,9 +159,9 @@ impl Section for StartThread {
         let t_name_index = reader.get_id();
         let g_name_index = reader.get_id();
         let p_name_index = reader.get_id();
-        StartThread {
+        Thread {
             trace_serial_num,
-            thread_obj_id,
+            id: thread_obj_id,
             thread_serial_num,
             t_name_index,
             g_name_index,
@@ -233,8 +251,6 @@ impl Section for AllocSites {
         let total_bytes_allocated = reader.read_long();
         let total_inst_allocated = reader.read_long();
         let num_sites = reader.read_int(); // number of sites that follow
-
-
         AllocSites {}
     }
 }

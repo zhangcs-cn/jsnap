@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::io::Error;
 use crate::parser::dump::get_heap_dump;
 use crate::parser::reader;
-use crate::parser::reader::{AllocSites, ControlSettings, CpuSamples, Frame, HeapSummary, Class, Reader, StartThread, Trace, Utf8};
+use crate::parser::reader::{AllocSites, ControlSettings, CpuSamples, Frame, HeapSummary, Class, Reader, Thread, Trace, Utf8};
 use crate::io::channel::{Result, Byte, Int, Long};
 use derive_getters::Getters;
 
@@ -39,7 +39,7 @@ pub struct Hprof {
 }
 
 /// 解析堆转储快照文件
-pub fn parse(file_path: &PathBuf, _: &PathBuf) -> Result<Hprof> {
+pub fn read(file_path: &PathBuf, _: &PathBuf) -> Result<Hprof> {
     let file_name = file_path.to_str().unwrap().to_string();
     let mut reader = Reader::new(&file_path)?;
 
@@ -105,23 +105,27 @@ pub fn parse(file_path: &PathBuf, _: &PathBuf) -> Result<Hprof> {
                 let method_sig = symbols.get(frame.method_sig());
                 // 源文件
                 let src_file = symbols.get(frame.src_file());
-                // println!("{:?} {:?} {:?}", method_name.unwrap(), method_sig.unwrap(), src_file.unwrap());
+                println!("frame -> {} {} {}", method_name.unwrap(), method_sig.unwrap(), src_file.unwrap());
             }
             HPROF_TRACE => {
                 // a Java stack trace
                 let trace = reader.read::<Trace>(length);
+                // println!("{}", trace);
             }
             HPROF_ALLOC_SITES => {
                 // a set of heap allocation sites, obtained after GC
-                let _ = reader.read::<AllocSites>(length);
+                let sites = reader.read::<AllocSites>(length);
+
             }
             HPROF_HEAP_SUMMARY => {
                 // heap summary
                 let summary = reader.read::<HeapSummary>(length);
+                println!("summary: {}", summary.live())
             }
             HPROF_START_THREAD => {
                 // a newly started thread.
-                let thread = reader.read::<StartThread>(length);
+                let thread = reader.read::<Thread>(length);
+                println!("0x{}", format!("{:x}", thread.id()));
             }
             HPROF_END_THREAD => {
                 // a terminating thread.
@@ -129,16 +133,18 @@ pub fn parse(file_path: &PathBuf, _: &PathBuf) -> Result<Hprof> {
             }
             HPROF_CPU_SAMPLES => {
                 // a set of sample traces of running threads
-                let _ = reader.read::<CpuSamples>(length);
+                let samples = reader.read::<CpuSamples>(length);
+                println!("cpu samples: {}", samples.num())
             }
             HPROF_CONTROL_SETTINGS => {
                 // the settings of on/off switches
-                let _ = reader.read::<ControlSettings>(length);
+                let settings = reader.read::<ControlSettings>(length);
+                println!("settings: {}", settings.flags())
             }
             HPROF_HEAP_DUMP => {
                 // denote a heap dump
-                // reader.skip(length);
-                let _ = get_heap_dump(&mut reader, length);
+                // let _ = get_heap_dump(&mut reader, length);
+                reader.skip(length);
             }
             HPROF_HEAP_DUMP_SEGMENT => {
                 // denote a heap dump segment

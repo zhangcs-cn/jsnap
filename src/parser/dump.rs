@@ -35,6 +35,7 @@ pub fn get_heap_dump(reader: &mut Reader, len: Int) -> Result<Dump> {
                 let thread_obj_id = reader.get_id();    // thread object ID  (may be 0 for a thread newly attached through JNI)
                 let thread_seq = reader.read_int(); // thread sequence number
                 let stack_seq = reader.read_int();  // stack trace sequence number
+                println!("gc-root, thread {}", thread_obj_id)
             }
             HPROF_GC_ROOT_JNI_GLOBAL => {
                 // JNI global ref root
@@ -66,6 +67,7 @@ pub fn get_heap_dump(reader: &mut Reader, len: Int) -> Result<Dump> {
                 // Reference from thread block
                 let obj_id = reader.get_id();
                 let thread_seq = reader.read_int(); // thread serial number
+                println!("gc-root, thread {}", obj_id);
             }
             HPROF_GC_ROOT_MONITOR_USED => {
                 // Busy monitor
@@ -74,20 +76,22 @@ pub fn get_heap_dump(reader: &mut Reader, len: Int) -> Result<Dump> {
             HPROF_GC_CLASS_DUMP => {
                 // dump of a class object
                 let class_dump = reader.read::<ClassObject>(len);
+                println!("class {}", class_dump.id);
             }
             HPROF_GC_INSTANCE_DUMP => {
                 // dump of a class object
                 let normal_obj = reader.read::<NormalObject>(len);
+                println!("obj {}", normal_obj.id);
             }
             HPROF_GC_OBJ_ARRAY_DUMP => {
                 let obj_array = reader.read::<ObjectArray>(len);
             }
             HPROF_GC_PRIM_ARRAY_DUMP => {
                 // Todo let prim_array = reader.read::<PrimitiveArray>(len);
-                reader.skip(len);
+                reader.skip(len - 1);
             }
             _ => {
-                reader.skip(len);
+                reader.skip(len - 1);
             }
         }
     }

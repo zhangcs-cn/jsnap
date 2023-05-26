@@ -2,6 +2,7 @@ mod args;
 mod parser;
 mod errors;
 mod io;
+mod store;
 
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -20,7 +21,7 @@ fn main() {
     let (file_path, work_path) = init_dir(args);
 
     // 解析
-    let hprof = hprof::parse(&file_path, &work_path);
+    let hprof = hprof::read(&file_path, &work_path);
     let _ = match hprof {
         Ok(hprof) => hprof,
         Err(_) => {

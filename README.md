@@ -4,9 +4,13 @@
 
 ## build
 
+编译
+
 ```shell
 $ cargo build --release
 ```
+
+交叉编译
 
 ```shell
 $ cargo build --target=x86_64-unknown-linux-musl --release
