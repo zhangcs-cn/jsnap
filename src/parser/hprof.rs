@@ -91,10 +91,12 @@ pub fn read(file_path: &PathBuf, _: &PathBuf) -> Result<Hprof> {
                 // a newly loaded class
                 let class = reader.read::<Class>(length);
                 let class_name = get_name_from_id(class.name_id(), &symbols);
+                println!("{}", class_name)
             }
             HPROF_UNLOAD_CLASS => {
                 // an unloading class
                 let ser_num = reader.read_int();
+                println!("unload {}", ser_num)
             }
             HPROF_FRAME => {
                 // a Java stack frame
