@@ -1,8 +1,8 @@
 mod args;
 mod parser;
-mod errors;
 mod io;
 mod store;
+mod cli;
 
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -12,6 +12,14 @@ use std::fs::File;
 use std::io::BufReader;
 use crate::args::Args;
 use crate::parser::hprof;
+
+use std::collections::HashSet;
+use std::thread;
+use std::time::Duration;
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use rustyline::error::ReadlineError;
+
+use crate::cli::{JSnapCli, Result};
 
 fn main() {
     // 启动参数
@@ -29,6 +37,84 @@ fn main() {
             exit(exitcode::DATAERR)
         }
     };
+
+    // 进度
+    let progress = MultiProgress::new();
+    let sty = ProgressStyle::with_template(
+        "[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}",
+    )
+        .unwrap()
+        .progress_chars("##-");
+
+    let pb = progress.add(ProgressBar::new(128));
+    pb.set_style(sty.clone());
+
+    let pb2 = progress.insert_after(&pb, ProgressBar::new(200));
+    pb2.set_style(sty.clone());
+
+    let m_clone = progress.clone();
+    let h1 = thread::spawn(move || {
+        for i in 0..128 {
+            thread::sleep(Duration::from_millis(10));
+            pb.set_message(format!("item #{}", i + 1));
+            pb.inc(1);
+        }
+        m_clone.println("pb1 is done!").unwrap();
+        pb.finish_with_message("done");
+    });
+
+    let m_clone = progress.clone();
+    let h2 = thread::spawn(move || {
+        for i in 0..200 {
+            thread::sleep(Duration::from_millis(10));
+            pb2.set_message(format!("item #{}", i + 1));
+            pb2.inc(1);
+        }
+        m_clone.println("pb2 is done!").unwrap();
+        pb2.finish_with_message("done");
+    });
+
+    let _ = h1.join();
+    let _ = h2.join();
+
+    let _ = progress.clear();
+
+
+    let mut cli = match JSnapCli::new() {
+        Ok(cli) => cli,
+        Err(err) => {
+            println!("{}", err.to_string());
+            return exit(exitcode::OSERR);
+        }
+    };
+
+    loop {
+        let readline = cli.readline("");
+        match readline {
+            Ok(line) => {
+                if "exit".eq_ignore_ascii_case(line.as_str()) {
+                    break;
+                }
+                println!("Line: {:?}", line);
+            }
+            Err(ReadlineError::Interrupted) => {
+                println!("CTRL-C");
+                break;
+            }
+            Err(ReadlineError::Eof) => {
+                println!("CTRL-D");
+                break;
+            }
+            Err(err) => {
+                println!("Error: {:?}", err);
+                break;
+            }
+        }
+    }
+
+    println!("\nByte!\n");
+
+    thread::sleep(Duration::from_millis(500));
 
     exit(exitcode::OK)
 }
@@ -83,6 +169,4 @@ fn get_path_real_name(path: &mut PathBuf) -> String {
 }
 
 #[test]
-fn test_main() {
-
-}
+fn test_main() {}
